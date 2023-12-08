@@ -19,3 +19,5 @@ Tools and versions used:
     * zcu102 bsp 2022.2
   * Vivado 2022.2
   * Tensorflow ???
+
+TODO: import data once exepriments are completed

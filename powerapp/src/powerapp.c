@@ -1,0 +1,1 @@
+/home/vincenzo/XILINX/petalinux_prjs/xilinx-zcu102-trd/project-spec/meta-user/recipes-apps/powerapp/files/powerapp.c

@@ -1,0 +1,7 @@
+.vscode
+
+# ignore data for now
+data/*
+
+tmp*
+*dis
