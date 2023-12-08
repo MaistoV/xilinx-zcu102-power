@@ -7,16 +7,12 @@ import re
 # Data directory
 data_dir = "../data/"
 
-net_names = glob.glob(data_dir + "*") 
-print(net_names)
-exit
+net_names = glob.glob(data_dir + "*.csv") 
 
 # Loop over image and thread
-# data_net = [[0. for _ in range()) ] for _ in range(len(net_names))]
 power_nets = list(range(len(net_names)))
 for i in range(0,len(net_names)):
-    power_nets[i] = pandas.read_csv(net_names[i], sep=";", index_col=0 )
-
+    power_nets[i] = pandas.read_csv(net_names[i], sep=";")#, index_col=0 )
     plt.figure("Power")
     for column in power_nets[i]:
         plt.plot( power_nets[i][column], label=column    )
@@ -27,9 +23,9 @@ for i in range(0,len(net_names)):
     plt.legend()
     plt.xlabel("Samples")
     plt.ylabel("mW")
-plt.show()
-
-net_names = [ "raw_powerapp" ]
+    plt.show()
+exit()
+net_names = glob.glob(data_dir + ".csv.raw") 
 power_rails = [
 		"VCCPSINTFP",
 		"VCCPSINTLP",
