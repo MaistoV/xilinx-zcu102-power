@@ -6,3 +6,7 @@ data/*
 
 tmp*
 *dis
+
+# Binaries
+powerapp/powerapp
+app/app_O0
