@@ -8,9 +8,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 // Parameters default
-#define DEFAULT_US		    10000 // 10ms
+#define MIN_US			    10200L // 11ms
+#define DEFAULT_US		    20000L // 20ms
 #define DEFAULT_POWER       0
 #define DEFAULT_RAW		    1
 #define DEFAULT_OUTFILE	    "powerapp.csv"
@@ -131,7 +133,7 @@ void populate_ina226_array(ina226_t *ina226_list, size_t* ina226_list_size) {
 
 	qsort(ina226_list, i, sizeof(ina226_t), cmp_ina226);
 
-	*ina226_list_size = i -1;
+	*ina226_list_size = i;
 	for ( unsigned int i = 0; i < *ina226_list_size; i++) {
 		sprintf(ina226_list[i].name, "%s", railname_arr[i]);
 	}
@@ -166,8 +168,8 @@ void list_ina226_list (ina226_t *ina226_list, size_t ina226_list_size) {
 	// Found ina226 17 at dir: /sys/class/hwmon/hwmon19/curr1_input, MGTAVTT
 
 	printf(
-		"hwmonitors 2-11 are on PS_PMBUS\n"
-		"hwmonitors 12-19 are on PL_PMBUS\n"
+		"hwmons 2-11 are on PS_PMBUS\n"
+		"hwmons 12-19 are on PL_PMBUS\n"
 		"PS  = VCCPSINTFP + VCCPSINTLP + VCCPSAUX + VCCPSPLL + VCCPSDDR + VCCOPS + VCCOPS3 + VCCPSDDRPL\n"
 		"PL  = VCCINT + VCCBRAM + VCCAUX + VCC1V2VCC3V3\n"
 		"MGT = MGTRAVCC + MGTRAVTT + MGTAVCC + MGTAVTT\n"
