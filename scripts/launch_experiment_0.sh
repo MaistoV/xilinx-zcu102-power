@@ -18,7 +18,8 @@ export NUM_SAPLES=400 # this has to be hand-tuned
 # Loop over files
 for xmodel in $MODELS_PATH/*.xmodel
 do
-    echo "Running $(basename $xmodel .h5.xmodel)"
+    export XMODEL_BASENAME=$(basename $xmodel .h5.xmodel)
+    echo "Running $XMODEL_BASENAME"
     time bash -x $SCRIPT_PATH/experiment_0.sh $xmodel
 
     # Sleep and reconfigure FPGA to decorrelate measures

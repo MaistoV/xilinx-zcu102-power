@@ -7,7 +7,7 @@ mkdir -p data
         -n $NUM_SAPLES                          \
         -t $POWERAPP_US                         \
         -p 1                                    \
-        -o data/$(basename $1 .h5.xmodel).csv   \
+        -o data/$XMODEL_BASENAME.csv   \
         &
 # Save PID for later
 POWERAPP_PID=$!

@@ -10,3 +10,4 @@ tmp*
 # Binaries
 powerapp/powerapp
 app/app_O0
+app/*.old

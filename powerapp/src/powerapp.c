@@ -36,8 +36,8 @@ int run_bm (
 	// start and end timestamps
 	struct timespec end_measure;
 	struct timespec start_measure;
+	struct timespec tmp_time;
 
-	// Open output files and print headers
 	// Open output files and print headers
 	if ( power == 1 ) {
 		power_fd = fopen(power_filename, "w");
@@ -45,7 +45,7 @@ int run_bm (
 			fprintf(stderr, "Can't open %s\n", power_filename);
 			return -1;
 		}
-		fprintf(power_fd, "Sample;PS mW;PL mW;MGT mW;Total mW\n");
+		fprintf(power_fd, "Sample;Timestamp;PS mW;PL mW;MGT mW;Total mW\n");
 	}
 	// Raw data files
 	if ( raw == 1 ) {
@@ -59,7 +59,7 @@ int run_bm (
 		}
 
 		// Print header
-		fprintf(raw_currents_fd, "Sample; Timestamp");
+		fprintf(raw_currents_fd, "Sample;Timestamp;");
 		for ( unsigned int i = 0; i < ina226_list_size; i++) {
 			fprintf(raw_currents_fd, "%s mA", ina226_list[i].name);
 			if ( i != (ina226_list_size -1) ) {
@@ -78,7 +78,7 @@ int run_bm (
 		}
 
 		// Print header
-		fprintf(raw_voltages_fd, "Sample;");
+		fprintf(raw_voltages_fd, "Sample;Timestamp;");
 		for ( unsigned int i = 0; i < ina226_list_size; i++) {
 			fprintf(raw_voltages_fd, "%s mV", ina226_list[i].name);
 			if ( i != (ina226_list_size -1) ) {
@@ -90,17 +90,16 @@ int run_bm (
 
 	// Collect samples
 	for ( unsigned int j = 0; (j < iterations) | (continuous == 1); j++ ) {
+		// Start of sample timestamp
+		clock_gettime(CLOCK_REALTIME, &start_measure);
+
+		// Print to file
 		if ( raw == 1 ) {
-			fprintf(raw_currents_fd, "%u;", j);
-			fprintf(raw_voltages_fd, "%u;", j);
+			fprintf(raw_currents_fd, "%u;%llu.%.9lu", j, (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec);
+			fprintf(raw_voltages_fd, "%u;%llu.%.9lu", j, (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec);
 		}
 
 		// Start measure on ina226 array
-		clock_gettime(CLOCK_REALTIME, &start_measure);
-		
-		fprintf(raw_voltages_fd, "%s", buffer);
-		fprintf(raw_currents_fd, "%s", buffer);
-
 		for ( unsigned int i = 0; i < ina226_list_size; i++) {
 			// Read voltage
 			ina226_fd = fopen(ina226_list[i].voltage_path, "r");
@@ -129,6 +128,7 @@ int run_bm (
 				}
 			}
 		}
+		// New line
 		if ( raw == 1 ){
 			fprintf(raw_currents_fd, "\n");
 			fprintf(raw_voltages_fd, "\n");
@@ -165,18 +165,28 @@ int run_bm (
 
 			total_power_mW =  mgt_power_mW + pl_power_mW + ps_power_mW;
 
-			fprintf(power_fd, "%u;%.6f;%.6f;%.6f;%.6f\n", j, ps_power_mW, pl_power_mW, mgt_power_mW, total_power_mW);
+			// Print on file
+			fprintf(power_fd, "%u;%llu.%.9lu;%.6f;%.6f;%.6f;%.6f\n",
+						j, 
+						(unsigned long long)start_measure.tv_sec, 
+						start_measure.tv_nsec,
+						ps_power_mW, 
+						pl_power_mW, 
+						mgt_power_mW, 
+						total_power_mW);
 		}
 
-		// Wait before next sampling
+		// End of sample timestamp
 		clock_gettime(CLOCK_REALTIME, &end_measure);
 
 		double measure_latency_us = (double)(end_measure.tv_sec  - start_measure.tv_sec) * 1.0e6 + // sec to usec
 							(double)(end_measure.tv_nsec - start_measure.tv_nsec) / 1.0e3; // nanosec to usec
+
+		// Wait before next sampling
 		unsigned long usleep_us = sampling_period_us - (unsigned long)measure_latency_us;
-		// printf("measure_latency_us %lu us\n", (unsigned long)measure_latency_us);
-		// printf("sampling_period_us %lu us\n", sampling_period_us);
-		// printf("waiting for %lu us\n", usleep_us);
+		// printf("[DEBUG] Measure_latency_us %lu us\n", (unsigned long)measure_latency_us);
+		// printf("	Sampling_period_us %lu us\n", sampling_period_us);
+		// printf("	Waiting for %lu us\n", usleep_us);
 		usleep( usleep_us );
 	}
 

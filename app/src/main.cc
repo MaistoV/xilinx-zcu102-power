@@ -30,7 +30,7 @@
 #include <queue>
 #include <string>
 #include <vector>
-#include <chrono>
+// #include <chrono>
 
 #include "common.h"
 #include "utils.h"
@@ -43,22 +43,16 @@
 
 using namespace std;
 
-/* debug_run */
-int thread_foo ( int index ) {
-  cout << this_thread::get_id() << ": I am thread[" << index << "]" << endl;
-  return index;
-}
-
-/* Stop this function from being inlined */
-__attribute__ ((__noinline__)) 
-void flag_function_1(){
-  asm("");
-}
-/* Stop this function from being inlined */
-__attribute__ ((__noinline__)) 
-void flag_function_2(){
-  asm("nop");
-}
+// /* Stop this function from being inlined */
+// __attribute__ ((__noinline__)) 
+// void flag_function_1(){
+//   asm("");
+// }
+// /* Stop this function from being inlined */
+// __attribute__ ((__noinline__)) 
+// void flag_function_2(){
+//   asm("nop");
+// }
 
 /* Array with static initialization, array size must be compile-time constant */
 /* I know this is ugly, forgive me */
@@ -180,12 +174,32 @@ int main(int argc, char *argv[]) {
   #define runCNN_ARGS(index) num_threads, num_images_per_thread, \
                               runner_list[index].get(), shapes, \
                               baseImagePath, images_names, labels, sfm_num, run_softmax
+  
   /* Flag for uprobes */
-  flag_function_1();
+  // flag_function_1();
+  
+	struct timespec end_measure;
+	struct timespec start_measure;
+  FILE* fd;
+
+  char* data_dir = "data/";
+  char filename [128];
+  strcat(filename, data_dir);
+  strcat(filename, getenv("XMODEL_BASENAME"));
+  strcat(filename, ".csv.time");
+
+  fd = fopen(filename, "w");
+  if ( fd == NULL ) {
+    fprintf(stderr, "Can't open %s\n", (char*)filename);
+    return -1;
+  }  
+
+  // Start timestamp
+  clock_gettime(CLOCK_REALTIME, &start_measure);
 
 // #define ARRAY_VECTORN
 #ifdef ARRAY_VECTORN
-  /* I know this is even uglier, but C/C++ preprocessor does not explicitly support loops */
+  /* I know this is even uglier, but C/C++ preprocessor does not explicitly support loops (for good reasons) */
   switch ( num_threads ) {
   case 1: {
     array<thread, 1> threads_list = { thread(runCNN, 0, runCNN_ARGS(0)) };
@@ -314,8 +328,22 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Flag for uprobes */
-  flag_function_2();
+  // flag_function_2();
 
+  // End timestamp
+  clock_gettime(CLOCK_REALTIME, &end_measure);
+
+  // Print to file
+  // Header
+  fprintf(fd, "Start(sec);End(sec)\n"); 
+  // Data
+  fprintf(fd, "%llu.%.9lu;%llu.%.9lu\n", (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec,
+                                         (unsigned long long)end_measure.tv_sec, end_measure.tv_nsec);
+
+  // Close file
+  fclose(fd);
+
+  // Clear objects
   labels.clear();
   images_names.clear();
   // labels.shrink_to_fit();
