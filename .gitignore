@@ -1,7 +1,8 @@
 .vscode
 
-# ignore data for now
+# ignore data and plots for now
 data/*
+*png
 
 tmp*
 *dis
