@@ -70,6 +70,7 @@ int main(int argc, char *argv[]) {
   vector<string> labels, images_names;
   string baseImagePath = "../datasets/images_imagenet/";
   string labelsPath = "../datasets/images_imagenet/labels.txt";
+  char out_dir[128] = ".";
   bool run_softmax = false;
   int max_images = 100;
   int num_threads = 1;
@@ -82,6 +83,7 @@ int main(int argc, char *argv[]) {
             "\n[<run_softmax>=" << run_softmax  << "] " <<
             "\n[<max_images>="  << max_images   << "] " <<
             "\n[<num_threads>=" << num_threads  << "] " <<
+            "\n[<out_dir>="     << out_dir      << "] " <<
             endl ;
     return -1;
   }
@@ -100,6 +102,9 @@ int main(int argc, char *argv[]) {
   if (argc >= 7) {
     num_threads = atoi(argv[6]);
   }
+  if (argc >= 8) {
+    strcpy(out_dir,argv[7]);
+  }
 
   /* debug_run */
   bool debug_run = (getenv("DEBUG_RUN") != nullptr);
@@ -112,6 +117,7 @@ int main(int argc, char *argv[]) {
         "run_softmax\t= "   << run_softmax   << "\n "
         "max_image\t= "     << max_images    << "\n "
         "num_threads\t= "   << num_threads   << "\n "
+        "out_dir\t="        << out_dir       << "\n "
         ;
   }
 
@@ -182,9 +188,9 @@ int main(int argc, char *argv[]) {
 	struct timespec start_measure;
   FILE* fd;
 
-  char* data_dir = "data/";
-  char filename [128];
-  strcat(filename, data_dir);
+  char filename [128] = "";
+  strcpy(filename, out_dir);
+  strcat(filename, "/");
   strcat(filename, getenv("XMODEL_BASENAME"));
   strcat(filename, ".csv.time");
 

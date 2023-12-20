@@ -2,12 +2,13 @@
 # Run application with specified xmodel
 
 # Launch power measurement in background in continuous mode
-mkdir -p data
-./powerapp \
+export OUT_DIR=data/$DATASET
+mkdir -p $OUT_DIR
+./powerapp                                      \
         -n $NUM_SAPLES                          \
         -t $POWERAPP_US                         \
         -p 1                                    \
-        -o data/$XMODEL_BASENAME.csv   \
+        -o $OUT_DIR/${XMODEL_BASENAME}.csv      \
         &
 # Save PID for later
 POWERAPP_PID=$!
@@ -22,6 +23,7 @@ sleep 1
     $RUN_SOFTMAX        \
     $MAX_IMAGES         \
     $NUM_THREADS        \
+    $OUT_DIR            \
     > /dev/null           # Suppress output to save CPU bandwidth
 
 # Stop power measurement

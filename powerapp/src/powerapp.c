@@ -15,7 +15,7 @@ int run_bm (
 				unsigned long sampling_period_us,
 				unsigned int raw,
 				unsigned int power,
-				unsigned int iterations,
+				unsigned int samples,
 				unsigned int continuous,
 				ina226_t *ina226_list,
 				size_t ina226_list_size
@@ -89,14 +89,14 @@ int run_bm (
 	}
 
 	// Collect samples
-	for ( unsigned int j = 0; (j < iterations) | (continuous == 1); j++ ) {
+	for ( unsigned int j = 0; (j < samples) | (continuous == 1); j++ ) {
 		// Start of sample timestamp
 		clock_gettime(CLOCK_REALTIME, &start_measure);
 
 		// Print to file
 		if ( raw == 1 ) {
-			fprintf(raw_currents_fd, "%u;%llu.%.9lu", j, (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec);
-			fprintf(raw_voltages_fd, "%u;%llu.%.9lu", j, (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec);
+			fprintf(raw_currents_fd, "%u;%llu.%.9lu;", j, (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec);
+			fprintf(raw_voltages_fd, "%u;%llu.%.9lu;", j, (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec);
 		}
 
 		// Start measure on ina226 array
@@ -163,7 +163,7 @@ int run_bm (
 						( ina226_list[VCC3V3].voltage	*	ina226_list[VCC3V3].current		)  
 					) / 1000.0;
 
-			total_power_mW =  mgt_power_mW + pl_power_mW + ps_power_mW;
+			total_power_mW = mgt_power_mW + pl_power_mW + ps_power_mW;
 
 			// Print on file
 			fprintf(power_fd, "%u;%llu.%.9lu;%.6f;%.6f;%.6f;%.6f\n",
@@ -183,7 +183,12 @@ int run_bm (
 							(double)(end_measure.tv_nsec - start_measure.tv_nsec) / 1.0e3; // nanosec to usec
 
 		// Wait before next sampling
-		unsigned long usleep_us = sampling_period_us - (unsigned long)measure_latency_us;
+		long usleep_us = sampling_period_us - (unsigned long)measure_latency_us;
+		if ( usleep_us < 0 ){
+			fprintf(stderr, "[ERROR %d] measure_latency_us (%lu) > sampling_period_us (%lu)\n",
+					getpid(), (unsigned long)measure_latency_us, sampling_period_us);
+			exit(-1);
+		};
 		// printf("[DEBUG] Measure_latency_us %lu us\n", (unsigned long)measure_latency_us);
 		// printf("	Sampling_period_us %lu us\n", sampling_period_us);
 		// printf("	Waiting for %lu us\n", usleep_us);
@@ -228,7 +233,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 	unsigned long sampling_period_us = DEFAULT_US;
 	unsigned int raw = DEFAULT_RAW;
 	unsigned int power = DEFAULT_POWER;
-	unsigned int iterations = DEFAULT_SAMPLES;
+	unsigned int samples = DEFAULT_SAMPLES;
 	unsigned int continuous = DEFAULT_CONTINUOUS;
 	char power_filename[50] = DEFAULT_OUTFILE;
 
@@ -254,7 +259,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 				list_ina226_list(ina226_list, ina226_list_size);
 				return 0;
 			case 'n':
-				iterations = atoi(optarg);
+				samples = atoi(optarg);
 				break;
 			case 'c':
 				continuous = atoi(optarg);
@@ -270,7 +275,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 						sampling_period_us,
 						raw,
 						power,
-						iterations,
+						samples,
 						continuous,
 						ina226_list,
 						ina226_list_size

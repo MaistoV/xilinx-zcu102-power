@@ -1,31 +1,54 @@
+import numpy as np
+import re
 import matplotlib.pyplot as plt
-import numpy
 import glob
 import pandas
-import re
+import sys
 
 # Data directory
-data_dir = "../data/"
+data_dir = "../data/CIFAR10"
+
+###################
+# Correction data #
+###################
+# TODO: automate the calculation and compensation of measure's interference
 
 ##############
 # Power data #
 ##############
 
-net_paths = glob.glob(data_dir + "*.csv") 
+if len(sys.argv) == 1:
+	base_net="ResNet"
+	# base_net="DenseNet" # unsupported for now
+if len(sys.argv) >= 2:
+	base_net = sys.argv[1]
+if len(sys.argv) >= 3:
+	data_dir = sys.argv[2]
+
+
+net_paths = glob.glob(data_dir + "/*" + base_net + "*.csv")
 net_paths.sort()
+print(data_dir + "/*" + base_net + "*.csv")
+print("net_paths ", net_paths)
+
 net_names = ["" for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
-	net_names[net] = net_paths[net][len(data_dir):-4]
+	# basename
+	net_names[net] = net_paths[net][len(data_dir)+1:-4]
+	net_names[net] = re.sub("KD_|sub|_T.+|_sc.+", "", net_names[net])
+print("net_names ", net_names)
 
 num_layers = [0 for net in range(len(net_paths))]
 for net in range(0,len(net_names)):
-	num_layers[net] = int(net_names[net][13:-3])
+	# num_layers[net] = int(net_names[net][13:-3])
+	num_layers[net] = re.sub(base_net, "", net_names[net])
+	num_layers[net] = int(re.sub("-|_.+", "", num_layers[net]))
+print("num_layers: ", num_layers)
 
 # Read data
 power_nets = list(range(len(net_paths)))
 for net in range(0,len(net_paths)):
 	power_nets[net] = pandas.read_csv(net_paths[net], sep=";", index_col=0 )
-
 
 ###################
 # Timestamps data #
@@ -39,7 +62,7 @@ for net in range(0,len(net_paths)):
 # Power plot #
 ##############
 
-plt.figure("Power", figsize=[15,15])
+plt.figure("Power", figsize=[15,10])
 ax = plt.subplot(2,4,1) # Assuming 8 nets
 for net in range(0,len(net_paths)):
 	ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
@@ -51,6 +74,8 @@ for net in range(0,len(net_paths)):
 	# Plot just PL and PS
 	plt.plot(power_nets[net]["Timestamp"], power_nets[net]["PS mW"	], label="PS"	)
 	plt.plot(power_nets[net]["Timestamp"], power_nets[net]["PL mW"	], label="PL"	)
+	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["MGT mW"	], label="MGT"	)
+	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["Total mW"	], label="Total"	)
 	
 	# Plot timeframe boundary
 	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
@@ -63,7 +88,7 @@ for net in range(0,len(net_paths)):
 	plt.xlabel("Time")
 	plt.ylabel("mW")
 
-plt.savefig("power.png", bbox_inches="tight")
+plt.savefig(base_net + "_power.png", bbox_inches="tight")
 
 ###############
 # Energy plot #
@@ -71,7 +96,7 @@ plt.savefig("power.png", bbox_inches="tight")
 
 # Compute integral in the target time frame
 TIME_BIN_s = 0.02 # 20000 us
-plt.figure("Energy from power", figsize=[15,15])
+plt.figure("Energy from power", figsize=[15,10])
 pl_energy_mJ = [0. for net in range(len(power_nets))]
 ps_energy_mJ = [0. for net in range(len(power_nets))]
 # Loop over nets
@@ -83,12 +108,22 @@ for net in range(0,len(power_nets)):
 			power_nets[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
 			and power_nets[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
 			):
-			# Accumulate
+			# Accumulate power
 			pl_energy_mJ[net] += power_nets[net]["PL mW"][sample]
 			ps_energy_mJ[net] += power_nets[net]["PS mW"][sample]
 	# Multiply with time bin (constant across samples)
 	pl_energy_mJ[net] *= TIME_BIN_s
 	ps_energy_mJ[net] *= TIME_BIN_s
+
+# Dataframe per franca
+header = ["CNN", "Energy"]
+df = [["" for _ in header] for _ in range(len(power_nets))]
+for i in range(0,len(net_names)):
+	df[i][0] = net_names[i] 
+	df[i][1] = str(ps_energy_mJ[i] + pl_energy_mJ[i])
+
+df = pandas.DataFrame(df)
+df.to_csv(base_net + "_energy.csv")
 
 NUM_FRAMES=1000
 # J / frame
@@ -98,12 +133,13 @@ plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
 plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
 plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
 plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
+plt.xticks(ticks=num_layers)
 plt.legend()
 plt.xlabel("Number of layers")
 plt.ylabel("mJ")
-plt.savefig("Energy from power.png", bbox_inches="tight")
+plt.savefig(base_net + "_Energy from power.png", bbox_inches="tight")
 
-plt.figure("Relative energy efficiency", figsize=[15,15])
+plt.figure("Relative energy efficiency", figsize=[15,10])
 tot_energy_mJ = [0. for net in range(len(power_nets))]
 relative_energy = [0. for net in range(len(power_nets))]
 for net in reversed(range(0,len(tot_energy_mJ))):
@@ -111,47 +147,27 @@ for net in reversed(range(0,len(tot_energy_mJ))):
 	relative_energy[net] = tot_energy_mJ[net] / tot_energy_mJ[-1]
 plt.plot(num_layers, relative_energy, marker="o" )
 plt.xlabel("Number of layers")
+plt.ylabel("%")
+plt.yticks(np.arange(0,1.1,0.1), labels=np.arange(0,110,10))
 plt.title("Student / Teacher energy gain")
-plt.xticks(ticks=num_layers)
-plt.savefig("Relative energy.png", bbox_inches="tight")
-	
+plt.savefig(base_net + "_Relative energy.png", bbox_inches="tight")
+
 #####################
 # Raw measures data #
 #####################
+TIME_BIN_s = 0.02 # 20000 us
 
 suffix_currents = ".csv.raw_currents"
 suffix_voltages = ".csv.raw_voltages"
-net_paths_raw_voltages = glob.glob(data_dir + "*" + suffix_voltages) 
-net_paths_raw_currents = glob.glob(data_dir + "*" + suffix_currents) 
+
+net_paths_raw_voltages = glob.glob(data_dir + "/*" + base_net + "*" + suffix_voltages) 
+net_paths_raw_currents = glob.glob(data_dir + "/*" + base_net + "*" + suffix_currents) 
 net_paths_raw_voltages.sort()
 net_paths_raw_currents.sort()
 net_names_raw = ["" for net in range(len(net_paths_raw_voltages))]
 for net in range(0,len(net_paths_raw_voltages)):
-	net_names_raw[net] = net_paths_raw_voltages[net][len(data_dir):(-1*len(suffix_voltages))]
-
-power_rails = [
-		# # Cortex-As (PS)
-		"VCCPSINTFP",	# Dominant
-		"VCCPSINTLP",
-		"VCCPSAUX",	
-		"VCCPSPLL",	
-		"VCCPSDDR",		# Dominant
-		# "VCCOPS",		# Don't use
-		# "VCCOPS3",	# Don't use
-		"VCCPSDDRPLL",
-		# FPGA (PL)
-		"VCCINT",		# Dominant
-		"VCCBRAM",
-		"VCCAUX",
-		"VCC1V2",
-		"VCC3V3",
-		# MGT
-		"MGTRAVCC",
-		"MGTRAVTT",
-		"MGTAVCC",
-		"MGTAVTT",
-		"VCC3V3",
-		]
+	# basename
+	net_names_raw[net] = net_paths_raw_voltages[net][len(data_dir)+1:(-1*len(suffix_voltages))]
 
 # Read data
 raw_nets_voltages = list(range(len(net_names_raw)))
@@ -160,18 +176,45 @@ for net in range(0,len(net_names_raw)):
 	raw_nets_currents[net] = pandas.read_csv( net_paths_raw_currents[net], sep=";", index_col=0 )
 	raw_nets_voltages[net] = pandas.read_csv( net_paths_raw_voltages[net], sep=";", index_col=0 )
 
+power_rails = [
+		# # Cortex-As (PS)
+		"VCCPSINTFP",	# Dominant
+		# "VCCPSINTLP",
+		# "VCCPSAUX",	
+		# "VCCPSPLL",	
+		"VCCPSDDR",		# Dominant
+		# "VCCOPS",		# Don't use
+		# "VCCOPS3",	# Don't use
+		# "VCCPSDDRPLL",
+		# # FPGA (PL)
+		"VCCINT",		# Dominant
+		# "VCCBRAM",
+		# "VCCAUX",
+		# "VCC1V2",
+		# "VCC3V3",
+		# # # MGT
+		# "MGTRAVCC",
+		# "MGTRAVTT",
+		# "MGTAVCC",
+		# "MGTAVTT",
+		# "VCC3V3",
+		]
+
 #####################
 # Raw measures plot #
 #####################
-plt.figure("Power from raw data", figsize=[15,15])
+plt.figure("Power from raw data", figsize=[15,10])
+RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
 # ax = plt.subplot(2,4,1) # Assuming 8 nets
 # for net in range(0,len(net_names_raw)):	
-for net in range(5,6):	
+for net in range(1,2):	
 	# ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
 	
 	# loop over power rails
 	for pr in power_rails:
-		plt.plot(raw_nets_currents[net]["Timestamp"], (raw_nets_currents[net][pr + " mA"] * raw_nets_voltages[net][pr + " mV"]) / 1000., label=pr	)
+		power_mW = (raw_nets_currents[net][pr + " mA"] * raw_nets_voltages[net][pr + " mV"]) / 1000.
+		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW, label=pr	)
+		# plt.plot(RANGE, power_mW, label=pr	)
 
 	# Plot timeframe boundary
 	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
@@ -182,11 +225,53 @@ for net in range(5,6):
 		plt.legend()
 	plt.legend()
 	plt.title(net_names_raw[net])
-	plt.xlabel("Time")
+	plt.xlabel("Time(s)")
+	# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
 	plt.xticks([])
 	plt.ylabel("mW")
 
+plt.savefig(base_net + "_raw.png", bbox_inches="tight")
 
-plt.savefig("raw.png", bbox_inches="tight")
+# Compute integral in the target time frame
+plt.figure("Energy from raw", figsize=[15,10])
+energy_mJ = [[0. for _ in range(len(power_rails))] for _ in range(len(power_nets))]
+# Loop over nets
+for net in range(0,len(net_names_raw)):	
+	# Loop over samples
+	for sample in range(0,len(raw_nets_currents[net])):
+		# If this sample is within the timeframe
+		if (
+			raw_nets_currents[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
+			and raw_nets_currents[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
+			):
+			# Accumulate power
+			for pr in range(0, len(power_rails)):
+				power_mW = (raw_nets_currents[net][power_rails[pr] + " mA"][sample] * raw_nets_voltages[net][power_rails[pr] + " mV"][sample]) / 1000.
+				energy_mJ[net][pr] += power_mW * TIME_BIN_s
+	# # Multiply with time bin (constant across samples)
+	# energy_mJ[net] *= TIME_BIN_s
 
-plt.show()
+# ax=plt.subplot(2,4,1)
+WIDTH=0.2
+colors=["orange","green","blue"]
+for net in range(0,len(net_names_raw)):	
+	for pr in range(0, len(power_rails)):
+		# ax=plt.subplot(2,4,net+1, sharey=ax)
+		plt.bar(net-WIDTH+(pr*WIDTH), # Assuming 3 prs
+			energy_mJ[net][pr],
+			width=WIDTH, 
+			color=colors[pr]
+			)
+for col in range(0,len(colors)):
+	plt.bar(0,0,color=colors[col], label=power_rails[col])
+
+plt.legend()
+plt.xlabel("Number of layers")
+plt.xticks( ticks=range(0, len(net_names_raw)),
+			labels=num_layers
+			)
+			
+plt.ylabel("mJ")
+plt.savefig(base_net + "_Energy from raw.png", bbox_inches="tight")
+
+# plt.show()

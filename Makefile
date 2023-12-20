@@ -19,9 +19,12 @@ ssh:
 scp: ${ARTIFACTS}
 	scp -r $^ root@${BOARD_IP}:${BOARD_DIR}/
 
+scp_models: ${MODELS_DIR}
+	scp -r $^ root@${BOARD_IP}:${BOARD_DIR}/
+
 recover_data:
 	mkdir -p ${DATA_DIR}
-	scp root@${BOARD_IP}:${BOARD_DIR}/data/*.csv* ${DATA_DIR}/
+	scp -r root@${BOARD_IP}:${BOARD_DIR}/data/* ${DATA_DIR}/
 #	Post process
 
 
@@ -33,3 +36,10 @@ plots:
 clean:
 	${MAKE} -C powerapp clean
 	rm -vrf app/app_O0
+
+.PHONY: tmp
+tmp:
+	-scp root@192.168.1.240:/home/root/TSUSC/powerapp400.csv.raw_currents powerapp400.csv.raw_currents.csv 
+	-scp root@192.168.1.240:/home/root/TSUSC/powerapp400.csv			  powerapp400.csv
+	# browse powerapp400.csv.raw_currents.csv 
+	browse powerapp400.csv
