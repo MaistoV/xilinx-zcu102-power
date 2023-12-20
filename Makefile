@@ -44,27 +44,38 @@ test: scp
 calibration: scp
 	${MAKE} ssh SSH_CMD="cd TSUSC; time bash -x scripts/calibration.sh"
 	${MAKE} recover_data
-	${MAKE} plot_calibration
+	${MAKE} plots_calibration
+
+calibration_loop:
+	${MAKE} calibration # 1
+	${MAKE} calibration # 2
+	${MAKE} calibration # 3
+	${MAKE} calibration # 4
+	${MAKE} calibration # 5
+	${MAKE} calibration # 6
+	${MAKE} calibration # 7
+	${MAKE} calibration # 8
+	${MAKE} calibration # 9
+	${MAKE} calibration # 10
 
 #########
 # Plots #
 #########
-
+PLOT_ROOTS := ./plots
 plots:
-	cd plots; python plot_0.py
+	cd ${PLOT_ROOTS}; python plot_0.py
 
 plots_calibration:
-	cd plots; python plot_calibration.py
-	
-.PHONY: powerapp app plots
+	cd ${PLOT_ROOTS}; python plot_calibration.py
 
+#########
+# Clean #
+#########
 clean:
 	${MAKE} -C powerapp clean
 	rm -vrf app/app_O0
 
-.PHONY: tmp
-tmp:
-	-scp root@192.168.1.240:/home/root/TSUSC/powerapp400.csv.raw_currents powerapp400.csv.raw_currents.csv 
-	-scp root@192.168.1.240:/home/root/TSUSC/powerapp400.csv			  powerapp400.csv
-	# browse powerapp400.csv.raw_currents.csv 
-	browse powerapp400.csv
+###########
+# PHONYes #
+###########
+.PHONY: powerapp app plots

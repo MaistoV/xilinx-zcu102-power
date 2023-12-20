@@ -5,14 +5,16 @@ import pandas
 # import re
 # import sys
 
+# TODO: add calibration also for raw measures?
+
 # Data directory
 data_dir = "../data/calibration"
 
 ##############
 # Power data #
 ##############
-calibration_meas_path = glob.glob(data_dir + "/" + "calibration_measure.csv")
-calibration_test_path = glob.glob(data_dir + "/" + "calibration_test.csv")
+calibration_meas_path = glob.glob(data_dir + "/calibration_measure.csv")
+calibration_test_path = glob.glob(data_dir + "/calibration_test.csv")
 
 # Read data
 calibration_meas = pandas.read_csv(calibration_meas_path[0], sep=";", index_col=0)
@@ -26,11 +28,11 @@ calibration_test["Timestamp"] -= offset
 #########
 # Power #
 #########
-plt.figure("Raw calibration", figsize=[15,10])
+plt.figure("Power calibration", figsize=[15,10])
 
 # Plot all
-plt.plot( calibration_meas["Timestamp"], calibration_meas["Total mW"], label="meas", marker="o")
-plt.plot( calibration_test["Timestamp"], calibration_test["Total mW"], label="test"	)
+plt.plot( calibration_meas["Timestamp"], calibration_meas["Total mW"], label="Samples", linestyle="", marker="o")
+# plt.plot( calibration_test["Timestamp"], calibration_test["Total mW"], label="test"	)
 
 # Start and end test timestamp
 meas_start_time	= calibration_meas["Timestamp"].iloc[ 0]
@@ -38,130 +40,86 @@ meas_end_time	= calibration_meas["Timestamp"].iloc[-1]
 
 test_start_time	= calibration_test["Timestamp"].iloc[ 0]
 test_end_time	= calibration_test["Timestamp"].iloc[-1]
-plt.axvline(x=test_start_time, color="r", linestyle="--", label="test")
-plt.axvline(x=test_end_time	 , color="r", linestyle="--", label="test")
-plt.axvline(x=meas_start_time, color="b", linestyle="--", label="meas")
-plt.axvline(x=meas_end_time  , color="b", linestyle="--", label="meas")
+plt.axvline(x=test_start_time, color="r", linestyle="dashed", label="Timeframe")
+plt.axvline(x=test_end_time	 , color="r", linestyle="dashed")
+# plt.axvline(x=meas_start_time, color="b", linestyle="dashed", label="meas")
+# plt.axvline(x=meas_end_time  , color="b", linestyle="dashed", label="meas")
+
+# Averages
+PRE_TEST=0 	# Pre-test
+TEST=1		# During test
+POST_TEST=2 # Post-test
+NON_TEST=3
+means = [0. for _ in [PRE_TEST, TEST, POST_TEST, NON_TEST]]
+means[PRE_TEST ] = calibration_meas["Total mW"].loc[calibration_meas["Timestamp"] < test_start_time].mean()
+means[POST_TEST] = calibration_meas["Total mW"].loc[calibration_meas["Timestamp"] > test_end_time].mean()
+means[NON_TEST] = (means[PRE_TEST] + means[POST_TEST]) / 2
+# Split selection in two steps
+tmp_df 		= calibration_meas	.loc[(calibration_meas["Timestamp"] > test_start_time)]
+means[TEST] = tmp_df["Total mW"].loc[(tmp_df		  ["Timestamp"] < test_end_time	 )].mean()
+
+# plt.hlines(y=means[PRE_TEST ], xmin=meas_start_time	, xmax=test_start_time	, linestyle="dashdot", color="b", label="pre test" )
+# plt.hlines(y=means[POST_TEST], xmin=test_end_time	, xmax=meas_end_time 	, linestyle="dashdot", color="b", label="post test")
+# plt.hlines(y=means[TEST     ], xmin=test_start_time	, xmax=test_end_time	, linewidth=5, linestyle="dashdot", color="r", label="test"	   )
+plt.hlines(y=means[TEST		], xmin=meas_start_time	, xmax=meas_end_time 	, linewidth=2, linestyle="dashdot", color="r", label="avg test" )
+plt.hlines(y=means[NON_TEST ], xmin=meas_start_time	, xmax=meas_end_time 	, linewidth=2, linestyle="dashdot", color="b", label="avg non-test" )
 
 # Decorate
 plt.legend()
 plt.title("Raw calibration measures")
 plt.xlabel("Seconds")
 plt.ylabel("mW")
+plt.savefig("Calibration power.png")
 
-# Averages
-PRE_TEST=0 	# Pre-test
-TEST=1		# During test
-POST_TEST=2 # Post-test
-means = [0. for _ in [PRE_TEST, TEST, POST_TEST]]
-means[PRE_TEST ] = calibration_meas["Total mW"].loc[calibration_meas["Timestamp"] < test_start_time].mean()
-means[POST_TEST] = calibration_meas["Total mW"].loc[calibration_meas["Timestamp"] > test_end_time].mean()
-# Split selection in two steps
-tmp_df 		= calibration_meas	.loc[(calibration_meas["Timestamp"] > test_start_time)]
-means[TEST] = tmp_df["Total mW"].loc[(tmp_df		  ["Timestamp"] < test_end_time	 )].mean()
+################
+# Save to file #
+################
+diff = means[TEST] - means[NON_TEST] 
+diff_filename = "calibration.csv"
+# file1 = open(diff_filename, "a")  # append mode
+# file1.write(str(diff) + "\n")
+# file1.close()
 
-plt.hlines(y=means[PRE_TEST ], xmin=meas_start_time	, xmax=test_start_time	, linestyle="dashdot", color="b", label="Local means")
-plt.hlines(y=means[TEST     ], xmin=test_start_time	, xmax=test_end_time	, linestyle="dashdot", color="b")
-plt.hlines(y=means[POST_TEST], xmin=test_end_time	, xmax=meas_end_time 	, linestyle="dashdot", color="b")
-
-
-plt.savefig("Raw calibration.png")
-
-print(means[PRE_TEST] - means[POST_TEST])
-print(means[PRE_TEST] - means[TEST	   ])
-print(means[TEST	] - means[POST_TEST])
-print(means[PRE_TEST] )
-print(means[POST_TEST])
-print(means[TEST	] )
-
-# plt.show()
-exit()
-
-##########
-# Energy #
-##########
-
-# Compute integral in the target time frame
-TIME_BIN_s = 0.02 # 20000 us
-plt.figure("Energy from power", figsize=[15,10])
-pl_energy_mJ = [0. for net in range(len(power_nets))]
-ps_energy_mJ = [0. for net in range(len(power_nets))]
-# Loop over nets
-for net in range(0,len(power_nets)):
-	# Loop over samples
-	for sample in range(0,len(power_nets[net])):
-		# If this sample is in the timeframe
-		if (
-			power_nets[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
-			and power_nets[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
-			):
-			# Accumulate power
-			pl_energy_mJ[net] += power_nets[net]["PL mW"][sample]
-			ps_energy_mJ[net] += power_nets[net]["PS mW"][sample]
-	# Multiply with time bin (constant across samples)
-	pl_energy_mJ[net] *= TIME_BIN_s
-	ps_energy_mJ[net] *= TIME_BIN_s
-
-# Dataframe per franca
-header = ["CNN", "Energy"]
-df = [["" for _ in header] for _ in range(len(power_nets))]
-for i in range(0,len(net_names)):
-	df[i][0] = net_names[i] 
-	df[i][1] = str(ps_energy_mJ[i] + pl_energy_mJ[i])
-
-df = pandas.DataFrame(df)
-df.to_csv(base_net + "_energy.csv")
-
-NUM_FRAMES=1000
-# J / frame
-print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
-
-plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
-plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
-plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
-plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
-plt.xticks(ticks=num_layers)
+diff_df = pandas.read_csv(diff_filename)
+plt.figure("Computed differences", figsize=[15,10])
+# plt.subplot(1,2,1)
+# plt.title("Samples")
+# # plt.plot(diff_df, marker="o", linestyle="")
+# plt.boxplot(diff_df)
+# plt.subplot(1,2,2)
+plt.title("Histogram")
+plt.hist(diff_df, orientation="horizontal", label="Histogram", bins=20)
+plt.axhline(y=diff_df.to_numpy().mean(), label="Mean", color="r", linestyle="dashed" )
 plt.legend()
-plt.xlabel("Number of layers")
-plt.ylabel("mJ")
-plt.savefig(base_net + "_Energy from power.png", bbox_inches="tight")
-
-plt.figure("Relative energy efficiency", figsize=[15,10])
-tot_energy_mJ = [0. for net in range(len(power_nets))]
-relative_energy = [0. for net in range(len(power_nets))]
-for net in reversed(range(0,len(tot_energy_mJ))):
-	tot_energy_mJ[net] = pl_energy_mJ[net] + pl_energy_mJ[net]
-	relative_energy[net] = tot_energy_mJ[net] / tot_energy_mJ[-1]
-plt.plot(num_layers, relative_energy, marker="o" )
-plt.xlabel("Number of layers")
-plt.ylabel("%")
-plt.yticks(np.arange(0,1.1,0.1), labels=np.arange(0,110,10))
-plt.title("Student / Teacher energy gain")
-plt.savefig(base_net + "_Relative energy.png", bbox_inches="tight")
-
-#####################
-# Raw meass data #
-#####################
+plt.savefig("Calibration histogram.png")
+ 
+#################
+# Raw meas data #
+#################
 TIME_BIN_s = 0.02 # 20000 us
 
 suffix_currents = ".csv.raw_currents"
 suffix_voltages = ".csv.raw_voltages"
 
-net_paths_raw_voltages = glob.glob(data_dir + "/*" + base_net + "*" + suffix_voltages) 
-net_paths_raw_currents = glob.glob(data_dir + "/*" + base_net + "*" + suffix_currents) 
-net_paths_raw_voltages.sort()
-net_paths_raw_currents.sort()
-net_names_raw = ["" for net in range(len(net_paths_raw_voltages))]
-for net in range(0,len(net_paths_raw_voltages)):
-	# basename
-	net_names_raw[net] = net_paths_raw_voltages[net][len(data_dir)+1:(-1*len(suffix_voltages))]
+calibration_meas_voltages_path = glob.glob(data_dir + "/calibration_measure" + suffix_voltages)
+calibration_meas_currents_path = glob.glob(data_dir + "/calibration_measure" + suffix_currents)
+calibration_test_voltages_path = glob.glob(data_dir + "/calibration_test"    + suffix_voltages)
+calibration_test_currents_path = glob.glob(data_dir + "/calibration_test"    + suffix_currents)
 
 # Read data
-raw_nets_voltages = list(range(len(net_names_raw)))
-raw_nets_currents = list(range(len(net_names_raw)))
-for net in range(0,len(net_names_raw)):
-	raw_nets_currents[net] = pandas.read_csv( net_paths_raw_currents[net], sep=";", index_col=0 )
-	raw_nets_voltages[net] = pandas.read_csv( net_paths_raw_voltages[net], sep=";", index_col=0 )
+calibration_meas_voltages = pandas.read_csv(calibration_meas_voltages_path[0], sep=";", index_col=0)
+calibration_meas_currents = pandas.read_csv(calibration_meas_currents_path[0], sep=";", index_col=0)
+calibration_test_voltages = pandas.read_csv(calibration_test_voltages_path[0], sep=";", index_col=0)
+calibration_test_currents = pandas.read_csv(calibration_test_currents_path[0], sep=";", index_col=0)
+
+# Realign timestamps to zero
+offset = calibration_meas_voltages["Timestamp"].loc[0]
+calibration_meas_voltages["Timestamp"] -= offset
+calibration_test_voltages["Timestamp"] -= offset
+
+offset = calibration_meas_currents["Timestamp"].loc[0]
+calibration_meas_currents["Timestamp"] -= offset
+calibration_test_currents["Timestamp"] -= offset
 
 power_rails = [
 		# # Cortex-As (PS)
@@ -187,78 +145,30 @@ power_rails = [
 		# "VCC3V3",
 		]
 
-#####################
-# Raw meass plot #
-#####################
-plt.figure("Power from raw data", figsize=[15,10])
-RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
-# ax = plt.subplot(2,4,1) # Assuming 8 nets
-# for net in range(0,len(net_names_raw)):	
-for net in range(1,2):	
-	# ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
+#################
+# Raw meas plot #
+#################
+plt.figure("Raw calibration", figsize=[15,10])
+plt.title("Raw calibration measures")
+
+# ax = plt.subplot(3,1,pr + 1)
+for pr in range(0,len(power_rails)):
+	# plt.subplot(3,2,2*pr + 1)
+	# plt.title(power_rails[pr])
+	# plt.plot( calibration_meas_voltages["Timestamp"], calibration_meas_voltages[power_rails[pr] + " mV"], label="Samples", linestyle="", marker="o")
+	# plt.ylabel("mV")
+
+	# plt.subplot(3,2,2*pr + 2)
+	# plt.subplot(3,1,pr + 1, shareay=ax)
+	plt.title(power_rails[pr])
+	plt.plot( calibration_meas_currents["Timestamp"], calibration_meas_currents[power_rails[pr] + " mA"], label=power_rails[pr], linestyle="", marker="o")
+	plt.ylabel("mA")
+
 	
-	# loop over power rails
-	for pr in power_rails:
-		power_mW = (raw_nets_currents[net][pr + " mA"] * raw_nets_voltages[net][pr + " mV"]) / 1000.
-		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW, label=pr	)
-		# plt.plot(RANGE, power_mW, label=pr	)
+plt.axvline(x=test_start_time, color="r", linestyle="dashed", label="Timeframe")
+plt.axvline(x=test_end_time	 , color="r", linestyle="dashed")
 
-	# Plot timeframe boundary
-	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
-	plt.axvline(x=time_nets[net]["End(sec)"  ].to_numpy(), linestyle="--")
-
-	# Decorate
-	if ( net == 0 ):
-		plt.legend()
-	plt.legend()
-	plt.title(net_names_raw[net])
-	plt.xlabel("Time(s)")
-	# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
-	plt.xticks([])
-	plt.ylabel("mW")
-
-plt.savefig(base_net + "_raw.png", bbox_inches="tight")
-
-# Compute integral in the target time frame
-plt.figure("Energy from raw", figsize=[15,10])
-energy_mJ = [[0. for _ in range(len(power_rails))] for _ in range(len(power_nets))]
-# Loop over nets
-for net in range(0,len(net_names_raw)):	
-	# Loop over samples
-	for sample in range(0,len(raw_nets_currents[net])):
-		# If this sample is within the timeframe
-		if (
-			raw_nets_currents[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
-			and raw_nets_currents[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
-			):
-			# Accumulate power
-			for pr in range(0, len(power_rails)):
-				power_mW = (raw_nets_currents[net][power_rails[pr] + " mA"][sample] * raw_nets_voltages[net][power_rails[pr] + " mV"][sample]) / 1000.
-				energy_mJ[net][pr] += power_mW * TIME_BIN_s
-	# # Multiply with time bin (constant across samples)
-	# energy_mJ[net] *= TIME_BIN_s
-
-# ax=plt.subplot(2,4,1)
-WIDTH=0.2
-colors=["orange","green","blue"]
-for net in range(0,len(net_names_raw)):	
-	for pr in range(0, len(power_rails)):
-		# ax=plt.subplot(2,4,net+1, sharey=ax)
-		plt.bar(net-WIDTH+(pr*WIDTH), # Assuming 3 prs
-			energy_mJ[net][pr],
-			width=WIDTH, 
-			color=colors[pr]
-			)
-for col in range(0,len(colors)):
-	plt.bar(0,0,color=colors[col], label=power_rails[col])
-
+# Decorate
 plt.legend()
-plt.xlabel("Number of layers")
-plt.xticks( ticks=range(0, len(net_names_raw)),
-			labels=num_layers
-			)
-			
-plt.ylabel("mJ")
-plt.savefig(base_net + "_Energy from raw.png", bbox_inches="tight")
-
-# plt.show()
+plt.xlabel("Seconds")
+plt.savefig("Calibration raw.png")

@@ -4,15 +4,15 @@ MEAS_T_us=20000 # 80ms
 MIN_T_us=10000  # 10ms
 
 # Keep latency constant (-n * -t)
-LATENCY_meas_us=8000000
+LATENCY_test_us=8000000 # 8 seconds (same as tests)
+LATENCY_meas_us=$(($LATENCY_test_us*4))
 SAMPLES_meas=$(($LATENCY_meas_us/$MEAS_T_us))
-LATENCY_test_us=$(($LATENCY_meas_us/4))
 SAMPLES_test=$((2*$LATENCY_test_us/$TEST_T_us))
 
 # Before launching measures
-SLEEP_TIME_BEFORE=$(($LATENCY_meas_us/1000000/2))
+SLEEP_TIME_BEFORE=3
 # Before launching test
-SLEEP_TIME_BETWEEN=$(($LATENCY_meas_us/1000000/2))
+SLEEP_TIME_BETWEEN=$(($LATENCY_meas_us/1000000/4))
 
 # # Derive bandwidth
 # TEST_B=$(bc -l <<< 1./$TEST_T_us)

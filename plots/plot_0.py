@@ -6,16 +6,9 @@ import pandas
 import sys
 
 # Data directory
-data_dir = "../data/CIFAR10"
-
-###################
-# Correction data #
-###################
-# TODO: automate the calculation and compensation of measure's interference
-
-##############
-# Power data #
-##############
+data_dir = "../data/"
+dataset = "CIFAR10"
+calibration_dir = "./"
 
 if len(sys.argv) == 1:
 	base_net="ResNet"
@@ -23,32 +16,76 @@ if len(sys.argv) == 1:
 if len(sys.argv) >= 2:
 	base_net = sys.argv[1]
 if len(sys.argv) >= 3:
-	data_dir = sys.argv[2]
+	dataset = sys.argv[2]
+
+##############
+# Power data #
+##############
 
 
-net_paths = glob.glob(data_dir + "/*" + base_net + "*.csv")
+net_paths = glob.glob(data_dir + dataset + "/*" + base_net + "*.csv")
 net_paths.sort()
-print(data_dir + "/*" + base_net + "*.csv")
-print("net_paths ", net_paths)
+# print(data_dir + dataset + "/*" + base_net + "*.csv")
+# print("net_paths ", net_paths)
 
 net_names = ["" for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
 	# basename
-	net_names[net] = net_paths[net][len(data_dir)+1:-4]
+	net_names[net] = net_paths[net][len(data_dir + dataset)+1:-4]
 	net_names[net] = re.sub("KD_|sub|_T.+|_sc.+", "", net_names[net])
-print("net_names ", net_names)
+# print("net_names ", net_names)
 
 num_layers = [0 for net in range(len(net_paths))]
 for net in range(0,len(net_names)):
 	# num_layers[net] = int(net_names[net][13:-3])
 	num_layers[net] = re.sub(base_net, "", net_names[net])
 	num_layers[net] = int(re.sub("-|_.+", "", num_layers[net]))
-print("num_layers: ", num_layers)
+# print("num_layers: ", num_layers)
 
 # Read data
 power_nets = list(range(len(net_paths)))
 for net in range(0,len(net_paths)):
 	power_nets[net] = pandas.read_csv(net_paths[net], sep=";", index_col=0 )
+
+############
+# Raw data #
+############
+
+suffix_currents = ".csv.raw_currents"
+suffix_voltages = ".csv.raw_voltages"
+
+net_paths_raw_voltages = glob.glob(data_dir + dataset + "/*" + base_net + "*" + suffix_voltages) 
+net_paths_raw_currents = glob.glob(data_dir + dataset + "/*" + base_net + "*" + suffix_currents) 
+net_paths_raw_voltages.sort()
+net_paths_raw_currents.sort()
+net_names_raw = ["" for net in range(len(net_paths_raw_voltages))]
+for net in range(0,len(net_paths_raw_voltages)):
+	# basename
+	net_names_raw[net] = net_paths_raw_voltages[net][len(data_dir + dataset)+1:(-1*len(suffix_voltages))]
+
+# Read data
+raw_nets_voltages = list(range(len(net_names_raw)))
+raw_nets_currents = list(range(len(net_names_raw)))
+for net in range(0,len(net_names_raw)):
+	raw_nets_currents[net] = pandas.read_csv( net_paths_raw_currents[net], sep=";", index_col=0 )
+	raw_nets_voltages[net] = pandas.read_csv( net_paths_raw_voltages[net], sep=";", index_col=0 )
+
+
+###################
+# Correction data #
+###################
+
+# Read calibration data
+calibration_path = glob.glob(calibration_dir + "calibration.csv")
+calibration_mean = pandas.read_csv(calibration_path[0], sep=";", header=None).to_numpy().mean()
+print(calibration_mean)
+
+# Adjust measures for powerapp
+for net in range(0,len(net_paths)):
+	power_nets[net]["Total mW"] -= calibration_mean
+	power_nets[net]["PS mW"]	-= calibration_mean
+
+# TODO: add calibration also for raw measures?
 
 ###################
 # Timestamps data #
@@ -58,14 +95,21 @@ time_nets = [0. for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
 	time_nets[net] = pandas.read_csv(net_paths[net] + ".time", sep=";" )
 
-##################
-# Offset to zero #
-################## 
+#######################
+# Offset to zero time #
+#######################
+
 # Realign timestamps to zero
 for net in range(0,len(net_paths)):
 	offset = power_nets[net]["Timestamp"].loc[0]
 	power_nets[net]["Timestamp"] -= offset
 	time_nets [net]				 -= offset
+
+# Realign timestamps to zero
+for net in range(0,len(net_names_raw)):
+	offset = raw_nets_currents[net]["Timestamp"].loc[0]
+	raw_nets_currents[net]["Timestamp"] -= offset
+	raw_nets_voltages[net]["Timestamp"] -= offset
 
 ##############
 # Power plot #
@@ -136,7 +180,7 @@ df.to_csv(base_net + "_energy.csv")
 
 NUM_FRAMES=1000
 # J / frame
-print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
+# print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
 
 plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
 plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
@@ -165,31 +209,6 @@ plt.savefig(base_net + "_Relative energy.png", bbox_inches="tight")
 # Raw measures data #
 #####################
 TIME_BIN_s = 0.02 # 20000 us
-
-suffix_currents = ".csv.raw_currents"
-suffix_voltages = ".csv.raw_voltages"
-
-net_paths_raw_voltages = glob.glob(data_dir + "/*" + base_net + "*" + suffix_voltages) 
-net_paths_raw_currents = glob.glob(data_dir + "/*" + base_net + "*" + suffix_currents) 
-net_paths_raw_voltages.sort()
-net_paths_raw_currents.sort()
-net_names_raw = ["" for net in range(len(net_paths_raw_voltages))]
-for net in range(0,len(net_paths_raw_voltages)):
-	# basename
-	net_names_raw[net] = net_paths_raw_voltages[net][len(data_dir)+1:(-1*len(suffix_voltages))]
-
-# Read data
-raw_nets_voltages = list(range(len(net_names_raw)))
-raw_nets_currents = list(range(len(net_names_raw)))
-for net in range(0,len(net_names_raw)):
-	raw_nets_currents[net] = pandas.read_csv( net_paths_raw_currents[net], sep=";", index_col=0 )
-	raw_nets_voltages[net] = pandas.read_csv( net_paths_raw_voltages[net], sep=";", index_col=0 )
-
-# Realign timestamps to zero
-for net in range(0,len(net_names_raw)):
-	offset = raw_nets_currents[net]["Timestamp"].loc[0]
-	raw_nets_currents[net]["Timestamp"] -= offset
-	raw_nets_voltages[net]["Timestamp"] -= offset
 
 power_rails = [
 		# # Cortex-As (PS)
