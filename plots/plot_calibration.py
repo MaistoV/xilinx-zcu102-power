@@ -1,107 +1,85 @@
 import numpy as np
-import re
 import matplotlib.pyplot as plt
 import glob
 import pandas
-import sys
+# import re
+# import sys
 
 # Data directory
-data_dir = "../data/CIFAR10"
-
-###################
-# Correction data #
-###################
-# TODO: automate the calculation and compensation of measure's interference
+data_dir = "../data/calibration"
 
 ##############
 # Power data #
 ##############
-
-if len(sys.argv) == 1:
-	base_net="ResNet"
-	# base_net="DenseNet" # unsupported for now
-if len(sys.argv) >= 2:
-	base_net = sys.argv[1]
-if len(sys.argv) >= 3:
-	data_dir = sys.argv[2]
-
-
-net_paths = glob.glob(data_dir + "/*" + base_net + "*.csv")
-net_paths.sort()
-print(data_dir + "/*" + base_net + "*.csv")
-print("net_paths ", net_paths)
-
-net_names = ["" for net in range(len(net_paths))]
-for net in range(0,len(net_paths)):
-	# basename
-	net_names[net] = net_paths[net][len(data_dir)+1:-4]
-	net_names[net] = re.sub("KD_|sub|_T.+|_sc.+", "", net_names[net])
-print("net_names ", net_names)
-
-num_layers = [0 for net in range(len(net_paths))]
-for net in range(0,len(net_names)):
-	# num_layers[net] = int(net_names[net][13:-3])
-	num_layers[net] = re.sub(base_net, "", net_names[net])
-	num_layers[net] = int(re.sub("-|_.+", "", num_layers[net]))
-print("num_layers: ", num_layers)
+calibration_meas_path = glob.glob(data_dir + "/" + "calibration_measure.csv")
+calibration_test_path = glob.glob(data_dir + "/" + "calibration_test.csv")
 
 # Read data
-power_nets = list(range(len(net_paths)))
-for net in range(0,len(net_paths)):
-	power_nets[net] = pandas.read_csv(net_paths[net], sep=";", index_col=0 )
+calibration_meas = pandas.read_csv(calibration_meas_path[0], sep=";", index_col=0)
+calibration_test = pandas.read_csv(calibration_test_path[0], sep=";", index_col=0)
 
-###################
-# Timestamps data #
-###################
- 
-time_nets = [0. for net in range(len(net_paths))]
-for net in range(0,len(net_paths)):
-	time_nets[net] = pandas.read_csv(net_paths[net] + ".time", sep=";" )
-
-##################
-# Offset to zero #
-################## 
 # Realign timestamps to zero
-for net in range(0,len(net_paths)):
-	offset = power_nets[net]["Timestamp"].loc[0]
-	power_nets[net]["Timestamp"] -= offset
-	time_nets [net]				 -= offset
+offset = calibration_meas["Timestamp"].loc[0]
+calibration_meas["Timestamp"] -= offset
+calibration_test["Timestamp"] -= offset
 
-##############
-# Power plot #
-##############
+#########
+# Power #
+#########
+plt.figure("Raw calibration", figsize=[15,10])
 
-plt.figure("Power", figsize=[15,10])
-ax = plt.subplot(2,4,1) # Assuming 8 nets
-for net in range(0,len(net_paths)):
-	ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
+# Plot all
+plt.plot( calibration_meas["Timestamp"], calibration_meas["Total mW"], label="meas", marker="o")
+plt.plot( calibration_test["Timestamp"], calibration_test["Total mW"], label="test"	)
 
-	# # Plot all
-	# for column in power_nets[net]:
-	# 	plt.plot( power_nets[net][column], label=column	)
+# Start and end test timestamp
+meas_start_time	= calibration_meas["Timestamp"].iloc[ 0]
+meas_end_time	= calibration_meas["Timestamp"].iloc[-1]
 
-	# Plot just PL and PS
-	plt.plot(power_nets[net]["Timestamp"], power_nets[net]["PS mW"	], label="PS"	)
-	plt.plot(power_nets[net]["Timestamp"], power_nets[net]["PL mW"	], label="PL"	)
-	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["MGT mW"	], label="MGT"	)
-	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["Total mW"	], label="Total"	)
-	
-	# Plot timeframe boundary
-	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
-	plt.axvline(x=time_nets[net]["End(sec)"  ].to_numpy(), linestyle="--")
+test_start_time	= calibration_test["Timestamp"].iloc[ 0]
+test_end_time	= calibration_test["Timestamp"].iloc[-1]
+plt.axvline(x=test_start_time, color="r", linestyle="--", label="test")
+plt.axvline(x=test_end_time	 , color="r", linestyle="--", label="test")
+plt.axvline(x=meas_start_time, color="b", linestyle="--", label="meas")
+plt.axvline(x=meas_end_time  , color="b", linestyle="--", label="meas")
 
-	# Decorate
-	if ( net == 0 ):
-		plt.legend()
-	plt.title(net_names[net])
-	plt.xlabel("Seconds")
-	plt.ylabel("mW")
+# Decorate
+plt.legend()
+plt.title("Raw calibration measures")
+plt.xlabel("Seconds")
+plt.ylabel("mW")
 
-plt.savefig(base_net + "_power.png", bbox_inches="tight")
+# Averages
+PRE_TEST=0 	# Pre-test
+TEST=1		# During test
+POST_TEST=2 # Post-test
+means = [0. for _ in [PRE_TEST, TEST, POST_TEST]]
+means[PRE_TEST ] = calibration_meas["Total mW"].loc[calibration_meas["Timestamp"] < test_start_time].mean()
+means[POST_TEST] = calibration_meas["Total mW"].loc[calibration_meas["Timestamp"] > test_end_time].mean()
+# Split selection in two steps
+tmp_df 		= calibration_meas	.loc[(calibration_meas["Timestamp"] > test_start_time)]
+means[TEST] = tmp_df["Total mW"].loc[(tmp_df		  ["Timestamp"] < test_end_time	 )].mean()
 
-###############
-# Energy plot #
-###############
+plt.hlines(y=means[PRE_TEST ], xmin=meas_start_time	, xmax=test_start_time	, linestyle="dashdot", color="b", label="Local means")
+plt.hlines(y=means[TEST     ], xmin=test_start_time	, xmax=test_end_time	, linestyle="dashdot", color="b")
+plt.hlines(y=means[POST_TEST], xmin=test_end_time	, xmax=meas_end_time 	, linestyle="dashdot", color="b")
+
+
+plt.savefig("Raw calibration.png")
+
+print(means[PRE_TEST] - means[POST_TEST])
+print(means[PRE_TEST] - means[TEST	   ])
+print(means[TEST	] - means[POST_TEST])
+print(means[PRE_TEST] )
+print(means[POST_TEST])
+print(means[TEST	] )
+
+# plt.show()
+exit()
+
+##########
+# Energy #
+##########
 
 # Compute integral in the target time frame
 TIME_BIN_s = 0.02 # 20000 us
@@ -162,7 +140,7 @@ plt.title("Student / Teacher energy gain")
 plt.savefig(base_net + "_Relative energy.png", bbox_inches="tight")
 
 #####################
-# Raw measures data #
+# Raw meass data #
 #####################
 TIME_BIN_s = 0.02 # 20000 us
 
@@ -184,12 +162,6 @@ raw_nets_currents = list(range(len(net_names_raw)))
 for net in range(0,len(net_names_raw)):
 	raw_nets_currents[net] = pandas.read_csv( net_paths_raw_currents[net], sep=";", index_col=0 )
 	raw_nets_voltages[net] = pandas.read_csv( net_paths_raw_voltages[net], sep=";", index_col=0 )
-
-# Realign timestamps to zero
-for net in range(0,len(net_names_raw)):
-	offset = raw_nets_currents[net]["Timestamp"].loc[0]
-	raw_nets_currents[net]["Timestamp"] -= offset
-	raw_nets_voltages[net]["Timestamp"] -= offset
 
 power_rails = [
 		# # Cortex-As (PS)
@@ -216,7 +188,7 @@ power_rails = [
 		]
 
 #####################
-# Raw measures plot #
+# Raw meass plot #
 #####################
 plt.figure("Power from raw data", figsize=[15,10])
 RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
