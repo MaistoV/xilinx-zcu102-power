@@ -234,6 +234,8 @@ power_rails = [
 		# "VCC3V3",
 		]
 
+power_rails_names = [ "PS", "DDR", "PL"]
+
 #####################
 # Raw measures plot #
 #####################
@@ -241,13 +243,13 @@ plt.figure("Power from raw data", figsize=[15,10])
 RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
 # ax = plt.subplot(2,4,1) # Assuming 8 nets
 # for net in range(0,len(net_names_raw)):	
-for net in range(1,2):	
+for net in range(4,5):	
 	# ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
 	
 	# loop over power rails
 	for pr in power_rails:
 		power_mW = (raw_nets_currents[net][pr + " mA"] * raw_nets_voltages[net][pr + " mV"]) / 1000.
-		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW, label=pr	)
+		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW)#, label=pr	)
 		# plt.plot(RANGE, power_mW, label=pr	)
 
 	# Plot timeframe boundary
@@ -257,12 +259,12 @@ for net in range(1,2):
 	# Decorate
 	if ( net == 0 ):
 		plt.legend()
-	plt.legend()
-	plt.title(net_names_raw[net])
-	plt.xlabel("Time(s)")
+	plt.legend(power_rails_names)
+	# plt.title(net_names_raw[net])
+	plt.xlabel("Time")
 	# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
 	plt.xticks([])
-	plt.ylabel("mW")
+	plt.ylabel("Power(mW)")
 
 plt.savefig(base_net + "_raw.png", bbox_inches="tight")
 
