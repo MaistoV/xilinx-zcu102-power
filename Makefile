@@ -63,7 +63,15 @@ calibration_loop:
 #########
 PLOT_ROOTS := ./plots
 plots:
-	cd ${PLOT_ROOTS}; python plot_0.py
+	cd ${PLOT_ROOTS}; python plots.py
+
+plots_pre-process: 
+	cd ${PLOT_ROOTS}; \
+	python plot_pre-process.py cifar10  resnets   ResNet-50    \
+	python plot_pre-process.py cifar100 resnets   ResNet-50	   \
+	python plot_pre-process.py cifar10  densenets DenseNet-201 \
+	python plot_pre-process.py cifar100 densenets DenseNet-201
+
 
 plots_calibration:
 	cd ${PLOT_ROOTS}; python plot_calibration.py

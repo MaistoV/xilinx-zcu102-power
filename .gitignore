@@ -2,6 +2,7 @@
 
 # ignore data and plots for now
 data/*
+!data/pre-processed
 *.csv*
 *png
 
@@ -12,3 +13,6 @@ tmp*
 powerapp/powerapp
 app/app_O0
 app/*.old
+
+# Calibration data
+!data/calibration/calibration.csv

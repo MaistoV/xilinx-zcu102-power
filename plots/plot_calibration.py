@@ -10,6 +10,10 @@ import pandas
 # Data directory
 data_dir = "../data/calibration"
 
+# Output directory
+out_dir = "..data/calibration/"
+plot_dir = "./calibration/"
+
 ##############
 # Power data #
 ##############
@@ -69,7 +73,7 @@ plt.legend()
 plt.title("Raw calibration measures")
 plt.xlabel("Seconds")
 plt.ylabel("mW")
-plt.savefig("Calibration power.png", bbox_inches="tight")
+plt.savefig(out_dir + "Calibration power.png", bbox_inches="tight")
 
 ################
 # Save to file #
@@ -91,7 +95,7 @@ plt.title("Histogram")
 plt.hist(diff_df, orientation="horizontal", label="Histogram", bins=20)
 plt.axhline(y=diff_df.to_numpy().mean(), label="Mean", color="r", linestyle="dashed" )
 plt.legend()
-plt.savefig("Calibration histogram.png", bbox_inches="tight")
+plt.savefig(out_dir + "Calibration histogram.png", bbox_inches="tight")
  
 #################
 # Raw meas data #
@@ -171,4 +175,4 @@ plt.axvline(x=test_end_time	 , color="r", linestyle="dashed")
 # Decorate
 plt.legend()
 plt.xlabel("Seconds")
-plt.savefig("Calibration raw.png", bbox_inches="tight")
+plt.savefig(out_dir + "Calibration raw.png", bbox_inches="tight")
