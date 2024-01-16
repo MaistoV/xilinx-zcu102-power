@@ -1,11 +1,11 @@
 .vscode
 
-# ignore data and plots for now
-data/*
-!data/pre-processed
-*.csv*
+# ignore raw data and plots for now
+data/raw/
+data/calibration/*.csv*
 *png
 
+# Tmp files
 tmp*
 *dis
 
@@ -15,4 +15,5 @@ app/app_O0
 app/*.old
 
 # Calibration data
+!data/pre-processed/*
 !data/calibration/calibration.csv

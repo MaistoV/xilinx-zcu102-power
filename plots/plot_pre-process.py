@@ -5,12 +5,13 @@ import glob
 import pandas
 import sys
 
-# Data directory
+# Input data directory
 data_dir = "../data/raw/"
-dataset = "CIFAR10"
+dataset = "cifar10"
 calibration_dir = "../data/calibration/"
 # Output directory
-out_dir = "./figures/"
+figures_dir = "./figures/"
+out_dir = "../data/pre-processed/"
 
 if len(sys.argv) == 1:
 	base_net="ResNet"
@@ -23,7 +24,6 @@ if len(sys.argv) >= 3:
 ##############
 # Power data #
 ##############
-
 
 net_paths = glob.glob(data_dir + dataset + "/*" + base_net + "*.csv")
 net_paths.sort()
@@ -107,6 +107,31 @@ for net in range(0,len(net_paths)):
 	power_nets[net]["Timestamp"] -= offset
 	time_nets [net]				 -= offset
 
+###################
+# Compute runtime #
+###################
+
+# Filename
+nets = base_net.lower() + "s"
+filename = out_dir + dataset + "_" + nets + "_" + "runtime.csv"
+
+# Open file
+file1 = open(filename, "w") 
+
+# Header
+file1.write("Network,Runtime(s)\n")
+
+# Compute and write to file
+runtime_net = [0. for net in range(len(net_paths))]
+for net in range(0,len(net_paths)):
+	runtime_net[net] = time_nets[net]["End(sec)"].to_numpy() - time_nets[net]["Start(sec)"].to_numpy()
+	file1.write(net_names[net] + "," + str(runtime_net[net][0]) + "\n")
+
+# Close file
+file1.close()
+
+exit()
+
 # Realign timestamps to zero
 for net in range(0,len(net_names_raw)):
 	offset = raw_nets_currents[net]["Timestamp"].loc[0]
@@ -143,7 +168,7 @@ for net in range(0,len(net_paths)):
 	plt.xlabel("Seconds")
 	plt.ylabel("mW")
 
-plt.savefig(out_dir + base_net + "_power.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_power.png", bbox_inches="tight")
 
 ###############
 # Energy plot #
@@ -193,7 +218,7 @@ plt.xticks(ticks=num_layers)
 plt.legend()
 plt.xlabel("Number of layers")
 plt.ylabel("mJ")
-plt.savefig(out_dir + base_net + "_Energy from power.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_Energy from power.png", bbox_inches="tight")
 
 plt.figure("Relative energy efficiency", figsize=[15,10])
 tot_energy_mJ = [0. for net in range(len(power_nets))]
@@ -206,7 +231,7 @@ plt.xlabel("Number of layers")
 plt.ylabel("%")
 plt.yticks(np.arange(0,1.1,0.1), labels=np.arange(0,110,10))
 plt.title("Student / Teacher energy gain")
-plt.savefig(out_dir + base_net + "_Relative energy.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_Relative energy.png", bbox_inches="tight")
 
 #####################
 # Raw measures data #
@@ -269,7 +294,7 @@ for net in range(0,len(net_names_raw)):
 	plt.xticks([])
 	plt.ylabel("Power(mW)")
 
-plt.savefig(out_dir + base_net + "_raw.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_raw.png", bbox_inches="tight")
 
 # Compute integral in the target time frame
 plt.figure("Energy from raw", figsize=[15,10])
@@ -311,6 +336,6 @@ plt.xticks( ticks=range(0, len(net_names_raw)),
 			)
 			
 plt.ylabel("mJ")
-plt.savefig(out_dir + base_net + "_Energy from raw.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_Energy from raw.png", bbox_inches="tight")
 
 # plt.show()
