@@ -1,0 +1,6 @@
+,Network,Parameters,Float Size (MB),Int Size (MB)
+0,subDenseNet-53,1733098,7.1,2.02
+1,subDenseNet-121,7047754,28,7.44
+2,subDenseNet-169,12659530,49.9,12.9
+3,subDenseNet-185,15332426,60.2,15.6
+4,DenseNet-201,18341194,71.8,18.6

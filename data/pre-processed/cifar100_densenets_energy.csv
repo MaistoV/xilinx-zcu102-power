@@ -1,0 +1,6 @@
+Network,Energy
+subDenseNet-53,"5,834"
+subDenseNet-121,"11,853"
+subDenseNet-169,"15,564"
+subDenseNet-185,"26,039"
+DenseNet-201,"30,442"
