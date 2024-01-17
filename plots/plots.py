@@ -11,7 +11,7 @@ import re
 
 # reading data
 data_dir = "../data/pre-processed/"
-dataset  = 'cifar10'
+dataset  = 'cifar100'
 networks = 'resnets'
 teacher  = 'ResNet-50'
 
@@ -140,7 +140,7 @@ decrementi_best['Accuracy']= best_accuracies / teacher_accuracy
 # generating plot for kd+ptq models (best accuracies)
 # plt.figure(figsize=(15,10))
 # plt.plot(num_layers,decrementi_energy['Energy'][:],linewidth=3,label='Energy')
-plt.plot(num_layers,decrementi_best['Accuracy'],linewidth=3,label='Best Accuracy KD+PTQ', color="red")
+plt.plot(num_layers,decrementi_best['Accuracy'],linewidth=3,label='Accuracy KD+PTQ (Best)', color="red")
 plt.legend(fontsize=15)
 plt.xlabel('Number of layers',fontsize=15)
 plt.ylabel('Relative Sturent/Teacher',fontsize=15)
