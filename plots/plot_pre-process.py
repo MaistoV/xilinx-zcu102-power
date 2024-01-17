@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import re
 import matplotlib.pyplot as plt
@@ -13,22 +14,25 @@ calibration_dir = "../data/calibration/"
 figures_dir = "./figures/"
 out_dir = "../data/pre-processed/"
 
-if len(sys.argv) == 1:
-	base_net="ResNet"
-	# base_net="DenseNet" # unsupported for now
+base_net="ResNet"
+# base_net="DenseNet" # unsupported for now
+
 if len(sys.argv) >= 2:
 	base_net = sys.argv[1]
 if len(sys.argv) >= 3:
 	dataset = sys.argv[2]
 
+print("base_net: ", base_net)
+print("dataset: ", dataset)
+
 ##############
 # Power data #
 ##############
-
+print(data_dir + dataset + "/*" + base_net + "*.csv")
 net_paths = glob.glob(data_dir + dataset + "/*" + base_net + "*.csv")
 net_paths.sort()
 # print(data_dir + dataset + "/*" + base_net + "*.csv")
-# print("net_paths ", net_paths)
+print("net_paths: ", net_paths)
 
 net_names = ["" for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
@@ -114,6 +118,7 @@ for net in range(0,len(net_paths)):
 # Filename
 nets = base_net.lower() + "s"
 filename = out_dir + dataset + "_" + nets + "_" + "runtime.csv"
+print(filename)
 
 # Open file
 file1 = open(filename, "w") 
@@ -125,12 +130,17 @@ file1.write("Network,Runtime(s)\n")
 runtime_net = [0. for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
 	runtime_net[net] = time_nets[net]["End(sec)"].to_numpy() - time_nets[net]["Start(sec)"].to_numpy()
-	file1.write(net_names[net] + "," + str(runtime_net[net][0]) + "\n")
+	# print out students first
+	if "sub" in os.path.basename(net_paths[net]):
+		file1.write(net_names[net] + "," + str(runtime_net[net][0]) + "\n")
+	else:
+		# Save teacher index
+		teacher_index = net
+# Print out teacher
+file1.write(net_names[teacher_index] + "," + str(runtime_net[teacher_index][0]) + "\n")
 
 # Close file
 file1.close()
-
-exit()
 
 # Realign timestamps to zero
 for net in range(0,len(net_names_raw)):
@@ -168,7 +178,7 @@ for net in range(0,len(net_paths)):
 	plt.xlabel("Seconds")
 	plt.ylabel("mW")
 
-plt.savefig(figures_dir + base_net + "_power.png", bbox_inches="tight")
+plt.savefig(figures_dir + dataset + "_" + base_net + "_power.png", bbox_inches="tight")
 
 ###############
 # Energy plot #
@@ -218,7 +228,7 @@ plt.xticks(ticks=num_layers)
 plt.legend()
 plt.xlabel("Number of layers")
 plt.ylabel("mJ")
-plt.savefig(figures_dir + base_net + "_Energy from power.png", bbox_inches="tight")
+plt.savefig(figures_dir + dataset + "_" + base_net + "_Energy from power.png", bbox_inches="tight")
 
 plt.figure("Relative energy efficiency", figsize=[15,10])
 tot_energy_mJ = [0. for net in range(len(power_nets))]
@@ -231,7 +241,7 @@ plt.xlabel("Number of layers")
 plt.ylabel("%")
 plt.yticks(np.arange(0,1.1,0.1), labels=np.arange(0,110,10))
 plt.title("Student / Teacher energy gain")
-plt.savefig(figures_dir + base_net + "_Relative energy.png", bbox_inches="tight")
+plt.savefig(figures_dir + dataset + "_" + base_net + "_Relative energy.png", bbox_inches="tight")
 
 #####################
 # Raw measures data #
@@ -269,10 +279,9 @@ power_rails_names = [ "PS", "DDR", "PL"]
 #####################
 plt.figure("Power from raw data", figsize=[15,10])
 RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
-ax = plt.subplot(2,4,1) # Assuming 8 nets
-for net in range(0,len(net_names_raw)):	
-# for net in range(4,5):	
-	ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
+ax = plt.subplot(2,2,1) # Assuming 8 nets
+for net in range(0,4):	
+	ax = plt.subplot(2, 2, net+1, sharey=ax) # Assuming 8 nets
 	
 	# loop over power rails
 	cnt = 0
@@ -294,7 +303,7 @@ for net in range(0,len(net_names_raw)):
 	plt.xticks([])
 	plt.ylabel("Power(mW)")
 
-plt.savefig(figures_dir + base_net + "_raw.png", bbox_inches="tight")
+plt.savefig(figures_dir + dataset + "_" + base_net + "_raw.png", bbox_inches="tight")
 
 # Compute integral in the target time frame
 plt.figure("Energy from raw", figsize=[15,10])
@@ -336,6 +345,6 @@ plt.xticks( ticks=range(0, len(net_names_raw)),
 			)
 			
 plt.ylabel("mJ")
-plt.savefig(figures_dir + base_net + "_Energy from raw.png", bbox_inches="tight")
+plt.savefig(figures_dir + dataset + "_" + base_net + "_Energy from raw.png", bbox_inches="tight")
 
 # plt.show()
