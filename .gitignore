@@ -1,10 +1,11 @@
 .vscode
 
-# ignore data and plots for now
-data/*
-*.csv*
+# ignore raw data and plots for now
+data/raw/
+data/calibration/*.csv*
 *png
 
+# Tmp files
 tmp*
 *dis
 
@@ -12,3 +13,7 @@ tmp*
 powerapp/powerapp
 app/app_O0
 app/*.old
+
+# Calibration data
+!data/pre-processed/*
+!data/calibration/calibration.csv

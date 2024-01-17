@@ -5,10 +5,13 @@ import glob
 import pandas
 import sys
 
-# Data directory
-data_dir = "../data/"
-dataset = "CIFAR10"
-calibration_dir = "./"
+# Input data directory
+data_dir = "../data/raw/"
+dataset = "cifar10"
+calibration_dir = "../data/calibration/"
+# Output directory
+figures_dir = "./figures/"
+out_dir = "../data/pre-processed/"
 
 if len(sys.argv) == 1:
 	base_net="ResNet"
@@ -22,7 +25,6 @@ if len(sys.argv) >= 3:
 # Power data #
 ##############
 
-
 net_paths = glob.glob(data_dir + dataset + "/*" + base_net + "*.csv")
 net_paths.sort()
 # print(data_dir + dataset + "/*" + base_net + "*.csv")
@@ -32,15 +34,15 @@ net_names = ["" for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
 	# basename
 	net_names[net] = net_paths[net][len(data_dir + dataset)+1:-4]
-	net_names[net] = re.sub("KD_|sub|_T.+|_sc.+", "", net_names[net])
-# print("net_names ", net_names)
+	net_names[net] = re.sub("KD_|_T.+|_sc.+", "", net_names[net])
+print("net_names ", net_names)
 
 num_layers = [0 for net in range(len(net_paths))]
 for net in range(0,len(net_names)):
-	# num_layers[net] = int(net_names[net][13:-3])
-	num_layers[net] = re.sub(base_net, "", net_names[net])
+	num_layers[net] = re.sub("sub", "", net_names[net])
+	num_layers[net] = re.sub(base_net, "", num_layers[net])
 	num_layers[net] = int(re.sub("-|_.+", "", num_layers[net]))
-# print("num_layers: ", num_layers)
+print("num_layers: ", num_layers)
 
 # Read data
 power_nets = list(range(len(net_paths)))
@@ -78,7 +80,7 @@ for net in range(0,len(net_names_raw)):
 # Read calibration data
 calibration_path = glob.glob(calibration_dir + "calibration.csv")
 calibration_mean = pandas.read_csv(calibration_path[0], sep=";", header=None).to_numpy().mean()
-print(calibration_mean)
+print("Calibration mean:", calibration_mean, " mW")
 
 # Adjust measures for powerapp
 for net in range(0,len(net_paths)):
@@ -104,6 +106,31 @@ for net in range(0,len(net_paths)):
 	offset = power_nets[net]["Timestamp"].loc[0]
 	power_nets[net]["Timestamp"] -= offset
 	time_nets [net]				 -= offset
+
+###################
+# Compute runtime #
+###################
+
+# Filename
+nets = base_net.lower() + "s"
+filename = out_dir + dataset + "_" + nets + "_" + "runtime.csv"
+
+# Open file
+file1 = open(filename, "w") 
+
+# Header
+file1.write("Network,Runtime(s)\n")
+
+# Compute and write to file
+runtime_net = [0. for net in range(len(net_paths))]
+for net in range(0,len(net_paths)):
+	runtime_net[net] = time_nets[net]["End(sec)"].to_numpy() - time_nets[net]["Start(sec)"].to_numpy()
+	file1.write(net_names[net] + "," + str(runtime_net[net][0]) + "\n")
+
+# Close file
+file1.close()
+
+exit()
 
 # Realign timestamps to zero
 for net in range(0,len(net_names_raw)):
@@ -141,7 +168,7 @@ for net in range(0,len(net_paths)):
 	plt.xlabel("Seconds")
 	plt.ylabel("mW")
 
-plt.savefig(base_net + "_power.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_power.png", bbox_inches="tight")
 
 ###############
 # Energy plot #
@@ -182,6 +209,7 @@ NUM_FRAMES=1000
 # J / frame
 # print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
 
+print(num_layers)
 plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
 plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
 plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
@@ -190,7 +218,7 @@ plt.xticks(ticks=num_layers)
 plt.legend()
 plt.xlabel("Number of layers")
 plt.ylabel("mJ")
-plt.savefig(base_net + "_Energy from power.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_Energy from power.png", bbox_inches="tight")
 
 plt.figure("Relative energy efficiency", figsize=[15,10])
 tot_energy_mJ = [0. for net in range(len(power_nets))]
@@ -203,7 +231,7 @@ plt.xlabel("Number of layers")
 plt.ylabel("%")
 plt.yticks(np.arange(0,1.1,0.1), labels=np.arange(0,110,10))
 plt.title("Student / Teacher energy gain")
-plt.savefig(base_net + "_Relative energy.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_Relative energy.png", bbox_inches="tight")
 
 #####################
 # Raw measures data #
@@ -241,16 +269,17 @@ power_rails_names = [ "PS", "DDR", "PL"]
 #####################
 plt.figure("Power from raw data", figsize=[15,10])
 RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
-# ax = plt.subplot(2,4,1) # Assuming 8 nets
-# for net in range(0,len(net_names_raw)):	
-for net in range(4,5):	
-	# ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
+ax = plt.subplot(2,4,1) # Assuming 8 nets
+for net in range(0,len(net_names_raw)):	
+# for net in range(4,5):	
+	ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8 nets
 	
 	# loop over power rails
+	cnt = 0
 	for pr in power_rails:
 		power_mW = (raw_nets_currents[net][pr + " mA"] * raw_nets_voltages[net][pr + " mV"]) / 1000.
-		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW)#, label=pr	)
-		# plt.plot(RANGE, power_mW, label=pr	)
+		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW, label=power_rails_names[cnt])
+		cnt += 1
 
 	# Plot timeframe boundary
 	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
@@ -259,14 +288,13 @@ for net in range(4,5):
 	# Decorate
 	if ( net == 0 ):
 		plt.legend()
-	plt.legend(power_rails_names)
-	# plt.title(net_names_raw[net])
+	plt.title(net_names[net])
 	plt.xlabel("Time")
 	# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
 	plt.xticks([])
 	plt.ylabel("Power(mW)")
 
-plt.savefig(base_net + "_raw.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_raw.png", bbox_inches="tight")
 
 # Compute integral in the target time frame
 plt.figure("Energy from raw", figsize=[15,10])
@@ -308,6 +336,6 @@ plt.xticks( ticks=range(0, len(net_names_raw)),
 			)
 			
 plt.ylabel("mJ")
-plt.savefig(base_net + "_Energy from raw.png", bbox_inches="tight")
+plt.savefig(figures_dir + base_net + "_Energy from raw.png", bbox_inches="tight")
 
 # plt.show()
