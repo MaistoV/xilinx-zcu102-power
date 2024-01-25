@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         "run_softmax\t= "   << run_softmax   << "\n "
         "max_image\t= "     << max_images    << "\n "
         "num_threads\t= "   << num_threads   << "\n "
-        "out_dir\t="        << out_dir       << "\n "
+        "out_dir\t ="       << out_dir       << "\n "
         ;
   }
 
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
   /***************************************************************************/
   /* Check size of label list agaist output tensor size */
   if ( labels.size() != shapes.outTensorList[0].size ) {
-    cout << "WARNING: number of labels is differnt from the number of classes\n";
+    cout << "WARNING: number of labels is different from the number of classes\n";
   }
 
   /* Define macro for thread arguments */

@@ -247,9 +247,6 @@ int runCNN(const int thread_index, const int num_threads, const size_t num_image
   assert(in_dims[0] == 1);
   assert(out_dims[0] == 1);
 
-  auto input_scale = get_input_scale(inputTensors[0]);
-  auto output_scale = get_output_scale(outputTensors[0]);
-
   /* get shape info */
   int outSize = shapes.outTensorList[0].size; // Number of classes
   int inSize = shapes.inTensorList[0].size; // Number of pixels
@@ -278,6 +275,7 @@ int runCNN(const int thread_index, const int num_threads, const size_t num_image
     cv::resize(tmp_image, resized_image, cv::Size(inHeight, inWidth), 0, 0);
 
     /* Mean value for resnet50 specified in Caffe prototxt */
+    // auto input_scale = get_input_scale(inputTensors[0]);
     // cout << "WARNING: only resizing is performed in image pre-processing\n";
     // float mean[3] = {104, 107, 123};
     // for (int h = 0; h < inHeight; h++) {
@@ -319,6 +317,7 @@ int runCNN(const int thread_index, const int num_threads, const size_t num_image
     /* Compute softmax */
     if ( run_softmax ) {
         cout << "\nImage : " << images_names[n] << endl;
+        auto output_scale = get_output_scale(outputTensors[0]);
         // runSoftmax(hw_sfm_controller, sfm_num, FCResult, outSize, output_scale, target_image, labels);
         runSoftmax(hw_sfm_controller, sfm_num, FCResult, outSize, output_scale, labels);
     }

@@ -1,10 +1,6 @@
-Network,Energy
-subResNet-08,7.578
-subResNet-11,5.834
-subResNet-14,11.853
-subResNet-23,15.564
-subResNet-26,15.564
-subResNet-35,23.066
-subResNet-38,24.689
-subResNet-41,26.039
-ResNet-50,30.422
+,Network,Energy
+0,ResNet-11,4955.698553596955
+1,ResNet-14,9559.777170215271
+2,ResNet-26,14804.913316731025
+3,ResNet-38,20001.427119406777
+4,ResNet-50,23872.144544187653

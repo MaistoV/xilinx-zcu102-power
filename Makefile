@@ -1,6 +1,6 @@
-BOARD_IP  = 192.168.1.240
 DATA_DIR  = ${PWD}/data
-BOARD_DIR = /home/root/TSUSC
+BOARD_ROOT_DIR = /home/root/TSUSC
+BOARD_XMODELS_DIR = ${BOARD_ROOT_DIR}/xmodels
 ARTIFACTS = powerapp/powerapp app/app_O0 scripts/
 
 # Parameters
@@ -29,26 +29,33 @@ ssh:
 	ssh root@${BOARD_IP} "${SSH_CMD}"
 
 scp: ${ARTIFACTS}
-	scp -r $^ root@${BOARD_IP}:${BOARD_DIR}/
+	scp -r $^ root@${BOARD_IP}:${BOARD_ROOT_DIR}/
 
-scp_models: ${MODELS_DIR}
-	scp -r $^ root@${BOARD_IP}:${BOARD_DIR}/
+scp_models: ${XMODELS_DIR}
+ifndef XMODELS_DIR
+	$(error "[ERROR] XMODELS_DIR is unset, set it to the root directory of your compilex xmodels")
+endif
+	scp -r $^ root@${BOARD_IP}:${BOARD_XMODELS_DIR}
 
 recover_data:
 	mkdir -p ${DATA_DIR}
-	scp -r root@${BOARD_IP}:${BOARD_DIR}/data/* ${DATA_DIR}/
+	scp -r root@${BOARD_IP}:${BOARD_ROOT_DIR}/data/cifar10*/* ${DATA_DIR}/raw/
 
-#########
-# Tests #
-#########
-test: scp
+###############
+# Experiments #
+###############
+experiments: scp
 	${MAKE} ssh SSH_CMD="cd TSUSC; time bash -x scripts/launch_experiment_0.sh"
 	${MAKE} recover_data
-	${MAKE} plot
+	${MAKE} plot_pre-process
+	${MAKE} plots
+
+mock_run: app
+	${MAKE} ssh SSH_CMD="cd TSUSC; bash scripts/mock_run.sh"
 
 calibration: scp
 	${MAKE} ssh SSH_CMD="cd TSUSC; time bash -x scripts/calibration.sh"
-	${MAKE} recover_data
+	scp -r root@${BOARD_IP}:${BOARD_ROOT_DIR}/calibration ${DATA_DIR}/
 	${MAKE} plots_calibration
 
 calibration_loop:
@@ -66,23 +73,23 @@ calibration_loop:
 #########
 # Plots #
 #########
-PLOT_ROOTS := ./plots
+PLOT_ROOT := ./plots
 plots:
-	cd ${PLOT_ROOTS}; \
-	python plots.py  ResNet		cifar10 ; \
-	python plots.py  ResNet		cifar100; \
-	python plots.py  DenseNet	cifar10 ; \
-	python plots.py  DenseNet	cifar100
+	cd ${PLOT_ROOT}; \
+	${PYTHON} plots.py  ResNet-50		cifar10 	; \
+	${PYTHON} plots.py  ResNet-50		cifar100	; \
+	${PYTHON} plots.py  DenseNet-201	cifar10 	; \
+	${PYTHON} plots.py  DenseNet-201	cifar100
 
 plots_pre-process: 
-	cd ${PLOT_ROOTS}; \
-	python plot_pre-process.py cifar10  resnets   ResNet-50   ; \
-	python plot_pre-process.py cifar100 resnets   ResNet-50	  ; \
-	python plot_pre-process.py cifar10  densenets DenseNet-201; \
-	python plot_pre-process.py cifar100 densenets DenseNet-201
+	cd ${PLOT_ROOT}; \
+	${PYTHON} plots_pre-process.py ResNet-50  	 cifar10	; \
+	${PYTHON} plots_pre-process.py ResNet-50  	 cifar100	; \
+	${PYTHON} plots_pre-process.py DenseNet-201  cifar10	; \
+	${PYTHON} plots_pre-process.py DenseNet-201  cifar100
 
 plots_calibration:
-	cd ${PLOT_ROOTS}; python plot_calibration.py
+	cd ${PLOT_ROOT}; ${PYTHON} plots_calibration.py
 
 #########
 # Clean #

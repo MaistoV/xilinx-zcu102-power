@@ -1,6 +1,6 @@
-Network,Energy
-subDenseNet-53,5.834
-subDenseNet-121,11.853
-subDenseNet-169,15.564
-subDenseNet-185,26.039
-DenseNet-201,30.442
+,Network,Energy
+0,DenseNet-53,39484.3140821954
+1,DenseNet-121,74498.83100424425
+2,DenseNet-169,92437.49593988543
+3,DenseNet-185,105002.35466226305
+4,DenseNet-201,112224.79353618456

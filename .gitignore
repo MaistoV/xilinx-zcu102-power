@@ -1,7 +1,7 @@
 .vscode
 
 # ignore raw data and plots for now
-data/raw/
+# data/raw/
 data/calibration/*.csv*
 *png
 
