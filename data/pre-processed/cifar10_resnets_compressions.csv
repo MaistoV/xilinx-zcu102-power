@@ -1,6 +1,6 @@
-,Network,Parameters,Float Size (MB),Int Size (MB)
-0,subResNet-11,2000266,7.8,2.14
-1,subResNet-14,8065418,30.9,8.08
-2,subResNet-26,14012938,53.7,13.9
-3,subResNet-38,19960458,76.5,19.8
-4,ResNet-50,23608202,90.6,23.5
+Network,Parameters,Float Size (MB),Int Size (MB)
+subResNet-11,2000266,7.8,2.14
+subResNet-14,8065418,30.9,8.03
+subResNet-26,14012938,53.7,13.9
+subResNet-38,19960458,76.5,19.7
+ResNet-50,23608202,90.6,23.3
