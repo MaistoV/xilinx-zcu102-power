@@ -1,4 +1,5 @@
 # import numpy as np
+from cProfile import run
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -24,32 +25,31 @@ if len(sys.argv) >= 3 :
 	dataset = sys.argv[2]
 
 base_nets = re.sub("-.+", "", teacher)
-nets = base_nets.lower() + "s"
-print("Running " + dataset + " " + nets + " " + teacher)
+base_nets_lower = base_nets.lower() + "s"
+print("Running " + dataset + " " + base_nets_lower + " " + teacher)
 
 #############
 # Read data #
 #############
 # Paths
-path_accuracy	 = data_dir + dataset + '_' + nets + '_accuracy.csv'
-path_energy	  	 = data_dir + dataset + '_' + nets + '_energy.csv'
-path_compression = data_dir + dataset + '_' + nets + '_compressions.csv'
-path_runtime 	 = data_dir + dataset + '_' + nets + '_runtime.csv'
+path_accuracy	= data_dir + dataset + '_' + base_nets_lower + '_accuracy.csv'
+path_energy	  	= data_dir + dataset + '_' + base_nets_lower + '_energy.csv'
+path_size 		= data_dir + dataset + '_' + base_nets_lower + '_size.csv'
+path_runtime 	= data_dir + dataset + '_' + base_nets_lower + '_runtime.csv'
 # Read
-df_accuracy 	= pd.read_csv(path_accuracy		)
-df_energy 		= pd.read_csv(path_energy		)
-df_compression 	= pd.read_csv(path_compression	)
-df_runtime		= pd.read_csv(path_runtime		)
+df_accuracy = pd.read_csv(path_accuracy		)
+df_energy 	= pd.read_csv(path_energy		)
+df_size 	= pd.read_csv(path_size	)
+df_runtime	= pd.read_csv(path_runtime		)
 
 ################
 # Extract data #
 ################
 # Teacher
-print(df_compression)
-teacher_energy 		= df_energy		.loc[ df_energy		.Network == teacher, 'Energy'    	  ].values[0]
+teacher_energy 		= df_energy		.loc[ df_energy		.Network == teacher, 'Energy (mJ)'	  ].values[0]
 teacher_accuracy  	= df_accuracy	.loc[ df_accuracy	.Network == teacher, 'Scratch'   	  ].values[0]
-teacher_float_MB 	= df_compression.loc[ df_compression.Network == teacher, 'Float Size (MB)'].values[0]
-teacher_int_MB	 	= df_compression.loc[ df_compression.Network == teacher, 'Int Size (MB)'  ].values[0]
+teacher_float_MB 	= df_size		.loc[ df_size		.Network == teacher, 'Float Size (MB)'].values[0]
+teacher_int_MB	 	= df_size		.loc[ df_size		.Network == teacher, 'Int Size (MB)'  ].values[0]
 teacher_runtime 	= df_runtime	.loc[ df_runtime	.Network == teacher, 'Runtime(s)'	  ].values[0]
 
 # Students
@@ -61,18 +61,18 @@ print("net_list: ", net_list)
 # students_accuracy = df_accuracy[df_accuracy['Network'].isin(net_list)]
 
 # Relative compression
-compression_KD = df_compression['Float Size (MB)'] / teacher_float_MB
-# compression_KD_PTQ = df_compression['Int Size (MB)'] /  teacher_float_MB
-compression_KD_PTQ = df_compression['Int Size (MB)'] /  teacher_int_MB
-# TODO: print this to file
-print("compression_KD: \n", compression_KD * 100)
-print("compression_KD_PTQ: \n", compression_KD_PTQ * 100)
+compression_KD = df_size['Float Size (MB)'] / teacher_float_MB * 100
+compression_KD_PTQ = df_size['Int Size (MB)'] / teacher_float_MB * 100
+# compression_KD_PTQ = df_size['Int Size (MB)'] / teacher_int_MB * 100
+# Print to file
+print(compression_KD_PTQ)
+print(compression_KD)
+
 
 # Relative reduction in runtime
 runtime = [0. for _ in range(0, len(net_list))]
 # df_runtime = df_runtime[df_runtime['Network'].isin(net_list)]
-runtime = df_runtime['Runtime(s)'] / teacher_runtime
-print("runtime: \n", runtime * 100)
+runtime = df_runtime['Runtime(s)'] / teacher_runtime * 100
 
 base_net = re.sub("-|\d", "", teacher)
 num_layers = [0 for net in range(len(net_list))]
@@ -87,13 +87,43 @@ print("num_layers: ", num_layers)
 
 # calculating accuracy-energy Relative Sturent/Teacheres
 decrementi_energy = df_energy.copy()
-#decrementi_energy.Energy = 1 - (teacher_energy - df_energy.Energy)/teacher_energy
-decrementi_energy.Energy = df_energy.Energy / teacher_energy
+#decrementi_energy["Energy (mJ)"] = 1 - (teacher_energy - df_energy["Energy (mJ)"])/teacher_energy
+decrementi_energy["Energy (mJ)"] = df_energy["Energy (mJ)"] / teacher_energy * 100
 # # Normalize min-max
-print("decrementi_energy.Energy:\n", decrementi_energy.Energy * 100)
-# min_energy = min(decrementi_energy.Energy)
-# max_energy = max(decrementi_energy.Energy)
-# decrementi_energy.Energy = ( decrementi_energy.Energy - min_energy ) / ( max_energy - min_energy )
+print("decrementi_energy:\n", decrementi_energy["Energy (mJ)"])
+# min_energy = min(decrementi_energy["Energy (mJ)"])
+# max_energy = max(decrementi_energy["Energy (mJ)"])
+# decrementi_energy["Energy (mJ)"] = ( decrementi_energy["Energy (mJ)"] - min_energy ) / ( max_energy - min_energy )
+
+# Print relative compression data to file
+# Concatenate serires
+df_compression = pd.concat([compression_KD, compression_KD_PTQ, runtime, decrementi_energy], axis="columns")
+df_compression = pd.concat([compression_KD, compression_KD_PTQ, runtime, decrementi_energy], axis="columns")
+# Swap columns
+df_compression = df_compression.reindex(columns=["Network", "Float Size (MB)", "Int Size (MB)", "Runtime(s)", "Energy (mJ)"])
+# Rename columns
+df_compression = df_compression.rename(columns={"Float Size (MB)"	: "Float Size (%)",
+												"Int Size (MB)"		: "Int Size (%)",
+												"Energy (mJ)"		: "Energy (%)",
+												"Runtime(s)"		: "Runtime (%)"
+												}
+										)
+
+# Float MB (\%) & PTQ MB (\%) & Runtime\% & Energy\% 
+
+# frame = {
+# 			"Quantized": compression_KD,
+# 			"Energy": decrementi_energy,
+# 			"Runtime": runtime,
+# 			}
+			
+# print("frame", frame)
+# df = pd.DataFrame(frame)
+
+print(df_compression)
+filename = data_dir + dataset + "_" + base_nets_lower + "_compression.csv"
+print(filename)
+df_compression.to_csv(filename, index=False)
 
 decrementi_accuracy = df_accuracy.copy()
 for c in df_accuracy.columns[1:]:
@@ -112,7 +142,7 @@ for c in df_accuracy.columns[1:]:
 plt.figure(figsize=(15,10))
 
 # Energy
-plt.plot(num_layers,decrementi_energy['Energy'][:],linewidth=3,label='Energy')
+plt.plot(num_layers,decrementi_energy["Energy (mJ)"][:],linewidth=3,label='Energy')
 # Runtime
 plt.plot(num_layers,runtime,linewidth=3,label='Runtime')
 # Compression
@@ -133,7 +163,7 @@ plt.savefig(figname, dpi=400, bbox_inches="tight")
 plt.figure(figsize=(15,10))
 
 # Energy
-plt.plot(num_layers,decrementi_energy['Energy'][:],linewidth=3,label='Energy')
+plt.plot(num_layers,decrementi_energy["Energy (mJ)"][:],linewidth=3,label='Energy')
 
 # Accuracy
 for c in df_accuracy.columns[2:]:
@@ -166,7 +196,7 @@ decrementi_best['Accuracy']= best_accuracies / teacher_accuracy
 
 # generating plot for kd+ptq models (best accuracies)
 # plt.figure(figsize=(15,10))
-# plt.plot(num_layers,decrementi_energy['Energy'][:],linewidth=3,label='Energy')
+# plt.plot(num_layers,decrementi_energy["Energy (mJ)"][:],linewidth=3,label='Energy')
 plt.plot(num_layers,decrementi_best['Accuracy'],linewidth=3,label='KD+PTQ (Best)', color="red")
 plt.legend(fontsize=15)
 plt.xlabel('Number of layers',fontsize=15)
@@ -180,7 +210,7 @@ plt.yticks(fontsize=15)
 
 # PTQ-only
 # plt.figure(figsize=(15,10))
-# plt.plot(num_layers,decrementi_energy['Energy'][:],linewidth=3,label='Energy')
+# plt.plot(num_layers,decrementi_energy["Energy (mJ)"][:],linewidth=3,label='Energy')
 plt.plot(num_layers,decrementi_accuracy['Scratch'],linewidth=3,label='PTQ-Only', color="green")
 plt.legend(fontsize=15)
 plt.xlabel('Number of layers',fontsize=15)

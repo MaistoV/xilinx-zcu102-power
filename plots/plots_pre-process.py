@@ -219,7 +219,7 @@ for net in range(0,len(power_nets)):
 	ps_energy_mJ[net] *= TIME_BIN_s
 
 # Dataframe per franca
-header = ["Network", "Energy"]
+header = ["Network", "Energy (mJ)"]
 df_list = [["" for _ in header] for _ in range(len(power_nets))]
 for i in range(0,len(net_names)):
 	df_list[i][0] = base_nets + "-" + str(num_layers[i] )
@@ -228,7 +228,7 @@ for i in range(0,len(net_names)):
 df = pandas.DataFrame(df_list, index=None, columns=header)
 filename = out_dir + dataset + "_" + base_nets_lower + "_energy.csv"
 print("Writing to", filename)
-df.to_csv(filename)
+df.to_csv(filename, index=False)
 
 # # NUM_FRAMES=1000
 # # J / frame
