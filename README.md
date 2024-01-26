@@ -7,6 +7,7 @@ Tools and versions used:
   * XCZU9EG MPSoC
   * Petalinux 2022.2
     * zcu102 bsp 2022.2
+    * DPU Vivado flow TRD
   * Vivado 2022.2
   * Tensorflow ???
 
