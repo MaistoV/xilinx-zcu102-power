@@ -35,8 +35,8 @@ print("Reading from", wildcard_path)
 net_paths = glob.glob(wildcard_path)
 assert(len(net_paths) != 0)
 # Sort net paths from shallower to deeper student, then teacher
-net_paths.sort()
 # For DenseNet and ResNet, the teacher comes alphabetically before students (e.g., subResNet)
+net_paths.sort()
 net_paths = net_paths[1:] + net_paths[: 1]
 net_names = ["" for net in range(len(net_paths))]
 # print("net_paths: ", net_paths)
@@ -68,10 +68,17 @@ suffix_currents = ".raw_currents"
 suffix_voltages = ".raw_voltages"
 
 print(wildcard_path + "*" + suffix_voltages)
+print(wildcard_path + "*" + suffix_currents)
 net_paths_raw_voltages = glob.glob(wildcard_path + "*" + suffix_voltages) 
 net_paths_raw_currents = glob.glob(wildcard_path + "*" + suffix_currents) 
 net_paths_raw_voltages.sort()
 net_paths_raw_currents.sort()
+# Sort net paths from shallower to deeper student, then teacher
+# For DenseNet and ResNet, the teacher comes alphabetically before students (e.g., subResNet)
+net_paths_raw_voltages = net_paths_raw_voltages[1:] + net_paths_raw_voltages[: 1]
+net_paths_raw_currents = net_paths_raw_currents[1:] + net_paths_raw_currents[: 1]
+print(net_paths_raw_currents)
+
 assert(len(net_paths_raw_voltages) != 0)
 assert(len(net_paths_raw_voltages) != 0)
 
@@ -79,6 +86,7 @@ net_names_raw = ["" for net in range(len(net_paths_raw_voltages))]
 for net in range(0,len(net_paths_raw_voltages)):
 	# basename
 	net_names_raw[net] = net_paths_raw_voltages[net][len(data_dir + dataset)+1:(-1*len(suffix_voltages))]
+
 
 # Read data
 raw_nets_voltages = list(range(len(net_names_raw)))
@@ -95,6 +103,7 @@ assert(len(raw_nets_voltages) != 0)
 ###################
 
 # Read calibration data
+print(calibration_dir + "calibration.csv")
 calibration_path = glob.glob(calibration_dir + "calibration.csv")
 calibration_mean = pandas.read_csv(calibration_path[0], sep=";", header=None).to_numpy().mean()
 print("Calibration mean:", calibration_mean, " mW")
@@ -110,8 +119,9 @@ for net in range(0,len(net_paths)):
 # Timestamps data #
 ###################
  
-time_nets = [0. for net in range(len(net_paths))]
+time_nets = [0. for _ in range(len(net_paths))]
 for net in range(0,len(net_paths)):
+	# print(net_paths[net] + ".time")
 	time_nets[net] = pandas.read_csv(net_paths[net] + ".time", sep=";" )
 
 #######################
@@ -124,9 +134,9 @@ for net in range(0,len(net_paths)):
 	power_nets[net]["Timestamp"] -= offset
 	time_nets [net]				 -= offset
 
-###################
-# Compute runtime #
-###################
+############################
+# Compute and save runtime #
+############################
 
 # Filename
 base_nets_lower = base_nets.lower() + "s"
@@ -143,6 +153,7 @@ file1.write("Network,Runtime(s)\n")
 runtime_net = [0. for net in range(len(net_paths))]
 for net in range(0,len(net_paths)):
 	runtime_net[net] = time_nets[net]["End(sec)"].to_numpy() - time_nets[net]["Start(sec)"].to_numpy()
+	print(runtime_net[net])
 	# print out students first
 	if "sub" in os.path.basename(net_paths[net]):
 		file1.write(net_names[net] + "," + str(runtime_net[net][0]) + "\n")
@@ -198,7 +209,7 @@ for net in range(0,len(net_names_raw)):
 ###############
 
 # Compute integral in the target time frame
-TIME_BIN_s = 0.02 # 20000 us
+TIME_BIN_s = 0.024 # 24000 us
 # plt.figure("Energy from power", figsize=[15,10])
 pl_energy_mJ = [0. for net in range(len(power_nets))]
 ps_energy_mJ = [0. for net in range(len(power_nets))]
@@ -235,15 +246,15 @@ df.to_csv(filename, index=False)
 # # print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
 
 # print(num_layers)
-# plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
-# plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
-# plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
-# plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
-# plt.xticks(ticks=num_layers)
-# plt.legend(fontsize=15)
-# plt.xlabel("Number of layers")
-# plt.ylabel("mJ")
-# plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from power.png", bbox_inches="tight")
+plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
+plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
+plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
+plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
+plt.xticks(ticks=num_layers)
+plt.legend(fontsize=15)
+plt.xlabel("Number of layers")
+plt.ylabel("mJ")
+plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from power.png", bbox_inches="tight")
 
 # plt.figure("Relative energy efficiency", figsize=[15,10])
 # tot_energy_mJ = [0. for net in range(len(power_nets))]
@@ -296,8 +307,8 @@ plt.figure("Power from raw data", figsize=[15,10])
 RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
 ax = plt.subplot(2,2,1) # Assuming 8
 # Skip teacher
-for net in range(1,5):	
-	ax = plt.subplot(2, 2, net, sharey=ax) # Assuming 8
+for net in range(0,4):	
+	ax = plt.subplot(2, 2, net+1, sharey=ax) # Assuming 8
 	
 	# loop over power rails
 	cnt = 0
@@ -319,7 +330,9 @@ for net in range(1,5):
 	plt.xticks([])
 	plt.ylabel("Power(mW)")
 
-plt.savefig(figures_dir + dataset + "_" + base_nets + "_raw.png", bbox_inches="tight")
+figname = figures_dir + dataset + "_" + base_nets + "_raw.png"
+print(figname)
+plt.savefig(figname, bbox_inches="tight")
 
 ##########################
 # Print a single measure #
@@ -329,13 +342,14 @@ plt.figure("Single", figsize=[15,10])
 # loop over power rails
 cnt = 0
 for pr in power_rails:
-	power_mW = (raw_nets_currents[0][pr + " mA"] * raw_nets_voltages[0][pr + " mV"]) / 1000.
-	plt.plot(raw_nets_currents[0]["Timestamp"], power_mW, label=power_rails_names[cnt])
+	# Plot the teacher
+	power_mW = (raw_nets_currents[-1][pr + " mA"] * raw_nets_voltages[-1][pr + " mV"]) / 1000.
+	plt.plot(raw_nets_currents[-1]["Timestamp"], power_mW, label=power_rails_names[cnt])
 	cnt += 1
 
 # Plot timeframe boundary
-plt.axvline(x=time_nets[0]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
-plt.axvline(x=time_nets[0]["End(sec)"  ].to_numpy(), linestyle="--")
+plt.axvline(x=time_nets[-1]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
+plt.axvline(x=time_nets[-1]["End(sec)"  ].to_numpy(), linestyle="--")
 
 # Decorate
 plt.legend(fontsize=15)
@@ -344,7 +358,9 @@ plt.xlabel("Time")
 plt.xticks([])
 plt.ylabel("Power(mW)")
 
-plt.savefig(figures_dir + "power_rails.png", bbox_inches="tight")
+figname = figures_dir + "power_rails.png"
+print(figname)
+plt.savefig(figname, bbox_inches="tight")
 
 # Compute integral in the target time frame
 # plt.figure("Energy from raw", figsize=[15,10])

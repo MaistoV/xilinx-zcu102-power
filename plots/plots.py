@@ -1,5 +1,4 @@
 # import numpy as np
-from cProfile import run
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -98,7 +97,6 @@ print("decrementi_energy:\n", decrementi_energy["Energy (mJ)"])
 # Print relative compression data to file
 # Concatenate serires
 df_compression = pd.concat([compression_KD, compression_KD_PTQ, runtime, decrementi_energy], axis="columns")
-df_compression = pd.concat([compression_KD, compression_KD_PTQ, runtime, decrementi_energy], axis="columns")
 # Swap columns
 df_compression = df_compression.reindex(columns=["Network", "Float Size (MB)", "Int Size (MB)", "Runtime(s)", "Energy (mJ)"])
 # Rename columns
@@ -108,18 +106,6 @@ df_compression = df_compression.rename(columns={"Float Size (MB)"	: "Float Size 
 												"Runtime(s)"		: "Runtime (%)"
 												}
 										)
-
-# Float MB (\%) & PTQ MB (\%) & Runtime\% & Energy\% 
-
-# frame = {
-# 			"Quantized": compression_KD,
-# 			"Energy": decrementi_energy,
-# 			"Runtime": runtime,
-# 			}
-			
-# print("frame", frame)
-# df = pd.DataFrame(frame)
-
 print(df_compression)
 filename = data_dir + dataset + "_" + base_nets_lower + "_compression.csv"
 print(filename)
@@ -128,7 +114,7 @@ df_compression.to_csv(filename, index=False)
 decrementi_accuracy = df_accuracy.copy()
 for c in df_accuracy.columns[1:]:
 	# decrementi_accuracy[c] = ( 1 - df_accuracy[c]/teacher_accuracy )
-	decrementi_accuracy[c] = df_accuracy[c] / teacher_accuracy
+	decrementi_accuracy[c] = df_accuracy[c] / teacher_accuracy * 100
 	# Normalize min-max
 	# min_accuracy = min(decrementi_accuracy[c])
 	# max_accuracy = max(decrementi_accuracy[c])
@@ -186,9 +172,9 @@ best_accuracies = []
 for n in df_accuracy.Network.unique():
 	temp = df_accuracy[df_accuracy['Network'] == n]
 	best = temp.iloc[:,2:].values.flatten()
-	best = max(best)
+	best = max(best) * 100
 	best_accuracies.append(best)
-best_accuracy['Accuracy'] = best_accuracies
+best_accuracy['Accuracy'] = best_accuracies 
 
 decrementi_best = best_accuracy.copy()
 # decrementi_best['Accuracy']= 1 - (best_accuracies/teacher_accuracy)

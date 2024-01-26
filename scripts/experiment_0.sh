@@ -23,7 +23,8 @@ sleep 1
     $RUN_SOFTMAX        \
     $MAX_IMAGES         \
     $NUM_THREADS        \
-    $OUT_DIR            
+    $OUT_DIR            \
+    > /dev/null
 
 # Stop power measurement
 # Give time to powerapp to flush to files

@@ -45,9 +45,9 @@ recover_data:
 # Experiments #
 ###############
 experiments: scp
-	${MAKE} ssh SSH_CMD="cd TSUSC; time bash -x scripts/launch_experiment_0.sh"
+	${MAKE} ssh SSH_CMD="cd TSUSC; time bash scripts/launch_experiment_0.sh"
 	${MAKE} recover_data
-	${MAKE} plot_pre-process
+	${MAKE} plots_pre-process
 	${MAKE} plots
 
 mock_run: app
