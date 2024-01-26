@@ -13,7 +13,7 @@ echo $CC | awk '{print $1}' | xargs which | sed -E "s|/sysroot.+||g"
 
 # Project intependent variables
 export XMODELS_DIR=/media/sf_Xilinx_Ubuntu_18_04_shared/TSUSC/xmodels/
-export BOARD_IP=192.168.1.101
+export BOARD_IP=192.168.1.100
 
 echo "XMODELS_DIR $XMODELS_DIR"
 echo "BOARD_IP $BOARD_IP"
