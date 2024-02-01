@@ -11,4 +11,4 @@ Tools and versions used:
   * Vivado 2022.2
   * Tensorflow ???
 
-> NOTE: Figures, raw and pre-processed data has been imported in this repo under the data/ folder.
+> NOTE: Figures, raw and pre-processed data have been imported in this repo under the data/ folder.
