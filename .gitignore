@@ -1,10 +1,9 @@
 .vscode
 
-# ignore raw data and plots for now
-# data/raw/
-data/calibration/*.csv*
+# Include also plots and raw data
 data/_OLD
-*png
+#data/raw/
+#*png
 
 # Tmp files
 tmp*
