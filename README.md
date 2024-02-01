@@ -1,5 +1,5 @@
 # xilinx-zcu102-power
-Work to be submitted to ITEE TSUSC
+Work submitted to ITEE TSUSC, [currently under review](https://mc.manuscriptcentral.com/cs-ieee).
 
 Tools and versions used:
   * Vitis-AI 3.0
@@ -11,4 +11,4 @@ Tools and versions used:
   * Vivado 2022.2
   * Tensorflow ???
 
-TODO: import data once exepriments are completed
+> NOTE: Figures, raw and pre-processed data has been imported in this repo under the data/ folder.
