@@ -1,5 +1,21 @@
 #!/bin/bash
-# Run application with specified xmodel
+# Description:
+#   Run powerapp and application with specified xmodel and parameters
+# Args:
+#   $1: Path to xmodel
+# Environment variables:
+#   DATASET
+#   NUM_SAPLES
+#   POWERAPP_US
+#   XMODEL_BASENAME
+#   IMAGE_PATH
+#   LABELS
+#   RUN_SOFTMAX
+#   MAX_IMAGES
+#   NUM_THREADS
+
+# Parse args
+XMODEL=$1
 
 # Launch power measurement in background in continuous mode
 export OUT_DIR=data/$DATASET
@@ -16,8 +32,8 @@ POWERAPP_PID=$!
 # Wait for powerapp to init
 sleep 1
 
-# Launch 
-./app_O0 $1             \
+# Launch
+./app_O0 $XMODEL        \
     $IMAGE_PATH         \
     $LABELS             \
     $RUN_SOFTMAX        \
