@@ -1,5 +1,4 @@
 # xilinx-zcu102-power
-Work submitted to ITEE TSUSC, [currently under review](https://mc.manuscriptcentral.com/cs-ieee).
 
 Tools and versions used:
   * Vitis-AI 3.0
