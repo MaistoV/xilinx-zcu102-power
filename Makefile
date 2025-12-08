@@ -45,16 +45,16 @@ recover_data:
 # Experiments #
 ###############
 experiments: scp
-	${MAKE} ssh SSH_CMD="cd TSUSC; time bash scripts/launch_experiment_0.sh"
+	${MAKE} ssh SSH_CMD="time bash scripts/launch_experiment_0.sh"
 	${MAKE} recover_data
 	${MAKE} plots_pre-process
 	${MAKE} plots
 
 mock_run: app
-	${MAKE} ssh SSH_CMD="cd TSUSC; bash scripts/mock_run.sh"
+	${MAKE} ssh SSH_CMD="bash scripts/mock_run.sh"
 
 calibration: scp
-	${MAKE} ssh SSH_CMD="cd TSUSC; time bash -x scripts/calibration.sh"
+	${MAKE} ssh SSH_CMD="time bash -x scripts/calibration.sh"
 	scp -r root@${BOARD_IP}:${BOARD_ROOT_DIR}/calibration ${DATA_DIR}/
 	${MAKE} plots_calibration
 
@@ -81,7 +81,7 @@ plots:
 	${PYTHON} plots.py  DenseNet-201	cifar10 	; \
 	${PYTHON} plots.py  DenseNet-201	cifar100
 
-plots_pre-process: 
+plots_pre-process:
 	cd ${PLOT_ROOT}; \
 	${PYTHON} plots_pre-process.py ResNet-50  	 cifar10	; \
 	${PYTHON} plots_pre-process.py ResNet-50  	 cifar100	; \
