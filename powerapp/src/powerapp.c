@@ -237,7 +237,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 	unsigned int continuous = DEFAULT_CONTINUOUS;
 	char power_filename[50] = DEFAULT_OUTFILE;
 
-	while ((opt = getopt(argc, argv, "r:p:t:o:n:l:c:h")) != -1) {
+	while ((opt = getopt(argc, argv, "r:p:t:o:n:lc:h")) != -1) {
 		switch (opt) {
 			case 'r':
 				raw = atoi(optarg);
