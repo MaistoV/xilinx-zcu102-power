@@ -44,12 +44,12 @@
 using namespace std;
 
 // /* Stop this function from being inlined */
-// __attribute__ ((__noinline__)) 
+// __attribute__ ((__noinline__))
 // void flag_function_1(){
 //   asm("");
 // }
 // /* Stop this function from being inlined */
-// __attribute__ ((__noinline__)) 
+// __attribute__ ((__noinline__))
 // void flag_function_2(){
 //   asm("nop");
 // }
@@ -110,14 +110,14 @@ int main(int argc, char *argv[]) {
   bool debug_run = (getenv("DEBUG_RUN") != nullptr);
   if ( debug_run ) {
     cout << "Running with arguments: "
-        << argv[0] << "\n " 
+        << argv[0] << "\n "
         "model_path\t= " << argv[1] << "\n "
         "baseImagePath\t= " << baseImagePath << "\n "
         "labelsPath\t= "    << labelsPath    << "\n "
         "run_softmax\t= "   << run_softmax   << "\n "
         "max_image\t= "     << max_images    << "\n "
         "num_threads\t= "   << num_threads   << "\n "
-        "out_dir\t ="       << out_dir       << "\n "
+        "out_dir \t = "     << out_dir       << "\n "
         ;
   }
 
@@ -145,8 +145,9 @@ int main(int argc, char *argv[]) {
   LoadLabels(labelsPath, labels);
   if ( labels.size() == 0 ) {
     cerr << "\nError: No labels exist in file labels.txt." << endl;
-    return -1;
+    // return -1;
   }
+  // printf("[INFO] labels.size() %ld\n",  labels.size());
 
   /***************************************************************************/
   /* NOTE: can't wrap this code in a function due to dynamic types handling */
@@ -158,7 +159,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < num_threads; ++i) {
     runner_list.push_back(vart::Runner::create_runner(dpu_subgraph[0], "run"));
   }
-  
+
   /* Prepare the memory layout of the intput and output tensors of the runner */
   auto inputTensors = runner_list[0]->get_input_tensors();
   auto outputTensors = runner_list[0]->get_output_tensors();
@@ -180,10 +181,10 @@ int main(int argc, char *argv[]) {
   #define runCNN_ARGS(index) num_threads, num_images_per_thread, \
                               runner_list[index].get(), shapes, \
                               baseImagePath, images_names, labels, sfm_num, run_softmax
-  
+
   /* Flag for uprobes */
   // flag_function_1();
-  
+
 	struct timespec end_measure;
 	struct timespec start_measure;
   FILE* fd;
@@ -198,7 +199,7 @@ int main(int argc, char *argv[]) {
   if ( fd == NULL ) {
     fprintf(stderr, "Can't open %s\n", (char*)filename);
     return -1;
-  }  
+  }
 
   // Start timestamp
   clock_gettime(CLOCK_REALTIME, &start_measure);
@@ -320,12 +321,12 @@ int main(int argc, char *argv[]) {
     threads_list.push_back( thread( runCNN, i, runCNN_ARGS(i) ) );
   }
 
-  for ( thread& t: threads_list ) { 
-    /* only threads that are not destructed can be joined;  */ 
-    if ( t.joinable() ) { 
-      t.join(); 
-    }   
-  } 
+  for ( thread& t: threads_list ) {
+    /* only threads that are not destructed can be joined;  */
+    if ( t.joinable() ) {
+      t.join();
+    }
+  }
   // threads_list.clear();
   // threads_list.shrink_to_fit();
   // vector<thread>().swap( threads_list );
@@ -340,8 +341,9 @@ int main(int argc, char *argv[]) {
   clock_gettime(CLOCK_REALTIME, &end_measure);
 
   // Print to file
+  printf("[INFO] Printing runtime to file %s\n", filename);
   // Header
-  fprintf(fd, "Start(sec);End(sec)\n"); 
+  fprintf(fd, "Start(sec);End(sec)\n");
   // Data
   fprintf(fd, "%llu.%.9lu;%llu.%.9lu\n", (unsigned long long)start_measure.tv_sec, start_measure.tv_nsec,
                                          (unsigned long long)end_measure.tv_sec, end_measure.tv_nsec);

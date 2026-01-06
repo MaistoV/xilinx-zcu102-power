@@ -1,5 +1,5 @@
 DATA_DIR  = ${PWD}/data
-BOARD_ROOT_DIR = /home/root/TSUSC
+BOARD_ROOT_DIR = /home/root/JSA
 BOARD_XMODELS_DIR = ${BOARD_ROOT_DIR}/xmodels
 ARTIFACTS = powerapp/powerapp app/app_O0 scripts/
 
@@ -18,7 +18,7 @@ powerapp/powerapp: powerapp/src/powerapp.c powerapp/src/powerapp.h
 	${MAKE} -C powerapp powerapp
 
 app: app/app_O0
-app/app_O0: app/src/main.cc
+app/app_O0: app/src/main.cc app/utils/utils.cpp app/common/common.cpp
 	cd app/; bash build.sh
 
 #########
@@ -31,30 +31,30 @@ ssh:
 scp: ${ARTIFACTS}
 	scp -r $^ root@${BOARD_IP}:${BOARD_ROOT_DIR}/
 
-scp_models: ${XMODELS_DIR}
-ifndef XMODELS_DIR
-	$(error "[ERROR] XMODELS_DIR is unset, set it to the root directory of your compilex xmodels")
+scp_models: ${HOST_XMODELS_DIR}
+ifndef HOST_XMODELS_DIR
+	$(error "[ERROR] HOST_XMODELS_DIR is unset, set it to the root directory of your compilex xmodels")
 endif
 	scp -r $^ root@${BOARD_IP}:${BOARD_XMODELS_DIR}
 
 recover_data:
 	mkdir -p ${DATA_DIR}
-	scp -r root@${BOARD_IP}:${BOARD_ROOT_DIR}/data/cifar10*/* ${DATA_DIR}/raw/
+	scp -r root@${BOARD_IP}:${BOARD_ROOT_DIR}/data/cifar10*/* ${DATA_DIR}/raw/TinyImagenet
 
 ###############
 # Experiments #
 ###############
 experiments: scp
-	${MAKE} ssh SSH_CMD="time bash scripts/launch_experiment_0.sh"
+	${MAKE} ssh SSH_CMD="cd ${BOARD_ROOT_DIR}; time bash scripts/launch_experiment_0.sh"
 	${MAKE} recover_data
 	${MAKE} plots_pre-process
 	${MAKE} plots
 
 mock_run: app
-	${MAKE} ssh SSH_CMD="bash scripts/mock_run.sh"
+	${MAKE} ssh SSH_CMD="cd ${BOARD_ROOT_DIR}; bash scripts/mock_run.sh"
 
 calibration: scp
-	${MAKE} ssh SSH_CMD="time bash -x scripts/calibration.sh"
+	${MAKE} ssh SSH_CMD="cd ${BOARD_ROOT_DIR}; time bash -x scripts/calibration.sh"
 	scp -r root@${BOARD_IP}:${BOARD_ROOT_DIR}/calibration ${DATA_DIR}/
 	${MAKE} plots_calibration
 
@@ -76,15 +76,15 @@ calibration_loop:
 PLOT_ROOT := ./plots
 plots:
 	cd ${PLOT_ROOT}; \
-	${PYTHON} plots.py  ResNet-50		cifar10 	; \
 	${PYTHON} plots.py  ResNet-50		cifar100	; \
-	${PYTHON} plots.py  DenseNet-201	cifar10 	; \
-	${PYTHON} plots.py  DenseNet-201	cifar100
+# 	${PYTHON} plots.py  ResNet-50		cifar10 	; \
+# 	${PYTHON} plots.py  DenseNet-201	cifar10 	; \
+# 	${PYTHON} plots.py  DenseNet-201	cifar100
 
 plots_pre-process:
 	cd ${PLOT_ROOT}; \
-	${PYTHON} plots_pre-process.py ResNet-50  	 cifar10	; \
 	${PYTHON} plots_pre-process.py ResNet-50  	 cifar100	; \
+	${PYTHON} plots_pre-process.py ResNet-50  	 cifar10	; \
 	${PYTHON} plots_pre-process.py DenseNet-201  cifar10	; \
 	${PYTHON} plots_pre-process.py DenseNet-201  cifar100
 

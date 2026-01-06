@@ -11,15 +11,15 @@ void read_dpu_info(int* dpu_num, int* sfm_num){
   *dpu_num = DPU_NUM(flags);
   bool DEBUG = (getenv("DEBUG_RUN") != nullptr);
   if ( DEBUG ) {
-    printf("DPU cores: %d; SFM cores: %d\n", *dpu_num, *sfm_num);
+    printf("[INFO] DPU cores: %d; SFM cores: %d\n", *dpu_num, *sfm_num);
     if ( *sfm_num == 0 ) {
       cout << "Warning: no SFM hardware available\n";
     }
   }
 }
 /* Wrap DPU async interfaces for uprobes */
-// __attribute__ ((__noinline__)) 
-// int sync_wait_wrapper(vart::Runner* runner, 
+// __attribute__ ((__noinline__))
+// int sync_wait_wrapper(vart::Runner* runner,
 //                       const std::vector<vart::TensorBuffer*>& inputsPtr,
 //                       const std::vector<vart::TensorBuffer*>& outputsPtr) {
 //     auto job_id = runner->execute_async(inputsPtr, outputsPtr);
@@ -27,7 +27,7 @@ void read_dpu_info(int* dpu_num, int* sfm_num){
 
 //     return exit_status;
 // }
-    
+
 /* Computing L1- adn L2-norms between hw and sw computations */
 void compute_norms (const float* hw_softmax_value, const float* softmax_value, const size_t size){
   double diff_vector[size];
@@ -72,7 +72,7 @@ void ListImages(string const& path, vector<string>& images, unsigned int max_ima
     fprintf(stderr, "Error: Open %s path failed.\n", path.c_str());
     exit(1);
   }
-  
+
   int loaded_images = 0;
   while ((entry = readdir(dir)) != nullptr & loaded_images < max_images) {
     if (entry->d_type == DT_REG || entry->d_type == DT_UNKNOWN) {
@@ -156,7 +156,7 @@ string TopK(const float* d, int size, int k, vector<string>& vlabels) {
 
   for (auto i = 0; i < k; ++i) {
     pair<float, int> ki = q.top();
-    printf("top[%d] prob = %.15f  name = %s\n", i, d[ki.second],
+    printf("[INFO] top[%d] prob = %.15f  name = %s\n", i, d[ki.second],
            vlabels[ki.second].c_str());
     if ( k == 0 ) {
       ret_val = vlabels[ki.second].c_str();
@@ -168,7 +168,7 @@ string TopK(const float* d, int size, int k, vector<string>& vlabels) {
 
 /**
  * @brief Run Softmax function on CPU and hardware (DPU IP)
- * 
+ *
  * @param FCResult Array of fixed-point values from quantized fully-connected layer
  * @param sfm_num Number of hw SFM accelerators in the DPU
  * @param num_classes Number of input classes
@@ -177,7 +177,7 @@ string TopK(const float* d, int size, int k, vector<string>& vlabels) {
  * @param labels List of data labels
  */
 static auto hw_sfm_controller = xir::SfmController::get_instance();
-void runSoftmax ( std::shared_ptr<xir::SfmController> hwsoftmax, int sfm_num, 
+void runSoftmax ( std::shared_ptr<xir::SfmController> hwsoftmax, int sfm_num,
                     const int8_t* FCResult, size_t num_classes, float output_scale,
                     // cv::Mat image, vector<string> labels ) {
                     vector<string> labels ) {
@@ -214,10 +214,10 @@ void runSoftmax ( std::shared_ptr<xir::SfmController> hwsoftmax, int sfm_num,
 
     start = std::chrono::system_clock::now();
     /* This call is synchronous */
-    hwsoftmax->run(FCResult, 
-                  output_scale, 
-                  num_classes, 
-                  group, 
+    hwsoftmax->run(FCResult,
+                  output_scale,
+                  num_classes,
+                  group,
                   hw_softmax_value);
 
     end = std::chrono::system_clock::now();
@@ -236,9 +236,9 @@ void runSoftmax ( std::shared_ptr<xir::SfmController> hwsoftmax, int sfm_num,
 }
 
 int runCNN(const int thread_index, const int num_threads, const size_t num_images_per_thread,
-            vart::Runner *runner, GraphInfo shapes, string baseImagePath, 
+            vart::Runner *runner, GraphInfo shapes, string baseImagePath,
             vector<string> images_names, vector<string> labels, int sfm_num, bool run_softmax) {
-  
+
   /* get in/out tensors and dims */
   auto outputTensors = runner->get_output_tensors();
   auto inputTensors = runner->get_input_tensors();
@@ -258,17 +258,19 @@ int runCNN(const int thread_index, const int num_threads, const size_t num_image
 
   cv::Mat target_image;
   int8_t *imageInputs = new int8_t[inSize * graphBatchSize];
-  int8_t *FCResult = new int8_t[graphBatchSize * outSize];
+  #define FC_SIZE (graphBatchSize * outSize)
+  int8_t *FCResult = new int8_t[FC_SIZE];
   std::vector<vart::TensorBuffer *> inputsPtr, outputsPtr;
   std::vector<std::shared_ptr<xir::Tensor>> batchTensors;
-  
+
   /* Loop over images */
   size_t thread_offset = thread_index*num_images_per_thread;
   for (unsigned int n = 0; n < num_images_per_thread; n++) {
-    // if ( (n & 0x0000003f) == 0 ) { 
-    //   printf("Thread[%d]: %u/%ld\n", thread_index, n+1, num_images_per_thread); 
+    // if ( (n & 0x0000003f) == 0 ) {
+    //   printf("[INFO] Thread[%d]: %u/%ld\n", thread_index, n+1, num_images_per_thread);
     // }
-    cv::Mat tmp_image = cv::imread(baseImagePath + images_names[n + thread_offset]);
+    // printf("[INFO] Reading tmp_image from %s\n", baseImagePath + images_names[n + thread_offset]);
+    cv::Mat tmp_image = cv::imread(baseImagePath + "/" + images_names[n + thread_offset]);
 
     /*image pre-process*/
     cv::Mat resized_image = cv::Mat(inHeight, inWidth, CV_8SC3);
@@ -323,12 +325,12 @@ int runCNN(const int thread_index, const int num_threads, const size_t num_image
     }
 
     inputs.clear();
-    outputs.clear();    
+    outputs.clear();
     inputs.shrink_to_fit();
-    outputs.shrink_to_fit();    
+    outputs.shrink_to_fit();
     // vector<std::unique_ptr<vart::TensorBuffer>>().swap( inputs );
     // vector<std::unique_ptr<vart::TensorBuffer>>().swap( outputs );
-    
+
   }
 
   /* Clean-up */
