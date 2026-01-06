@@ -18,6 +18,7 @@
 XMODEL=$1
 
 # Launch power measurement in background in continuous mode
+echo "[DEBUG] Running powerapp "
 export OUT_DIR=data/$DATASET
 mkdir -p $OUT_DIR
 ./powerapp                                      \
@@ -30,9 +31,11 @@ mkdir -p $OUT_DIR
 POWERAPP_PID=$!
 
 # Wait for powerapp to init
+echo "[DEBUG] Wait a sec"
 sleep 1
 
 # Launch
+echo "[DEBUG] Running app_O0"
 ./app_O0 $XMODEL        \
     $IMAGE_PATH         \
     $LABELS             \
@@ -40,11 +43,13 @@ sleep 1
     $MAX_IMAGES         \
     $NUM_THREADS        \
     $OUT_DIR            \
-    > /dev/null
+    # > /dev/null
 
 # Stop power measurement
 # Give time to powerapp to flush to files
 # sleep 2; kill $POWERAPP_PID
 
 # Wait for all the samples to be collected
+# echo "[DEBUG] Wait for powerapp to finish"
 wait $POWERAPP_PID
+echo "[DEBUG] Powerapp is done"
