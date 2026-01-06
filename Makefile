@@ -1,7 +1,8 @@
 DATA_DIR  = ${PWD}/data
-BOARD_ROOT_DIR = /home/root/JSA
+BOARD_ROOT_DIR = /home/root/TACO
 BOARD_XMODELS_DIR = ${BOARD_ROOT_DIR}/xmodels
 ARTIFACTS = powerapp/powerapp app/app_O0 scripts/
+BOARD_IP=192.168.1.240
 
 # Parameters
 # TODO: extend for automation
@@ -74,6 +75,7 @@ calibration_loop:
 # Plots #
 #########
 PLOT_ROOT := ./plots
+PYTHON = python3
 plots:
 	cd ${PLOT_ROOT}; \
 	${PYTHON} plots.py  ResNet-50		cifar100	; \

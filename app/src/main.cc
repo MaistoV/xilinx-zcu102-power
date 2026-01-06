@@ -68,7 +68,7 @@ for (thread& t: list) { \
 int main(int argc, char *argv[]) {
   GraphInfo shapes;
   vector<string> labels, images_names;
-  string baseImagePath = "../datasets/images_imagenet/";
+  string baseImagePath = "./datasets/cifar100/";
   string labelsPath = "../datasets/images_imagenet/labels.txt";
   char out_dir[128] = ".";
   bool run_softmax = false;
@@ -142,12 +142,11 @@ int main(int argc, char *argv[]) {
   }
 
   /* Load all labels labels */
-  LoadLabels(labelsPath, labels);
-  if ( labels.size() == 0 ) {
-    cerr << "\nError: No labels exist in file labels.txt." << endl;
-    // return -1;
-  }
-  // printf("[INFO] labels.size() %ld\n",  labels.size());
+  // LoadLabels(labelsPath, labels);
+  // if ( labels.size() == 0 ) {
+  //   cerr << "\nError: No labels exist in file labels.txt." << endl;
+  //   return -1;
+  // }
 
   /***************************************************************************/
   /* NOTE: can't wrap this code in a function due to dynamic types handling */
@@ -184,7 +183,10 @@ int main(int argc, char *argv[]) {
 
   /* Flag for uprobes */
   // flag_function_1();
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 	struct timespec end_measure;
 	struct timespec start_measure;
   FILE* fd;

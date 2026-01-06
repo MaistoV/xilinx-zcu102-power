@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
@@ -8,11 +9,11 @@ import pandas
 # TODO: add calibration also for raw measures?
 
 # Data directory
-data_dir = "../data/calibration"
+data_dir = "./data/calibration"
 
 # Output directory
-out_dir = "../data/calibration/"
-plot_dir = "./calibration/"
+out_dir = "./data/calibration/"
+plot_dir = "./plots/calibration/"
 
 ##############
 # Power data #
@@ -35,6 +36,12 @@ calibration_test["Timestamp"] -= offset
 # Power #
 #########
 plt.figure("Power calibration", figsize=[15,10])
+
+# Remove outliers
+# q_low = calibration_meas["Total mW"].quantile(0.01)
+# q_hi  = calibration_meas["Total mW"].quantile(0.99)
+
+# calibration_meas = calibration_meas[(calibration_meas["Total mW"] < q_hi) & (calibration_meas["Total mW"] > q_low)]
 
 # Plot all
 plt.plot( calibration_meas["Timestamp"], calibration_meas["Total mW"], label="Samples", linestyle="", marker="o")
@@ -80,8 +87,8 @@ plt.savefig(plot_dir + "Calibration power.png", dpi=400, bbox_inches="tight")
 ################
 # Save to file #
 ################
-diff = means[TEST] - means[NON_TEST] 
-diff_filename = "../data/calibration/calibration.csv"
+diff = means[TEST] - means[NON_TEST]
+diff_filename = "./data/calibration/calibration.csv"
 file1 = open(diff_filename, "a")  # append mode
 file1.write(str(diff) + "\n")
 file1.close()
@@ -98,7 +105,7 @@ file1.close()
 # plt.axhline(y=diff_df.to_numpy().mean(), label="Mean", color="r", linestyle="dashed" )
 # plt.legend(fontsize=15)
 # plt.savefig(plot_dir + "Calibration histogram.png", dpi=400, bbox_inches="tight")
- 
+
 #################
 # Raw meas data #
 #################
@@ -131,8 +138,8 @@ power_rails = [
 		# # Cortex-As (PS)
 		"VCCPSINTFP",	# Dominant
 		# "VCCPSINTLP",
-		# "VCCPSAUX",	
-		# "VCCPSPLL",	
+		# "VCCPSAUX",
+		# "VCCPSPLL",
 		"VCCPSDDR",		# Dominant
 		# "VCCOPS",		# Don't use
 		# "VCCOPS3",	# Don't use
@@ -170,7 +177,7 @@ for pr in range(0,len(power_rails)):
 	plt.plot( calibration_meas_currents["Timestamp"], calibration_meas_currents[power_rails[pr] + " mA"], label=power_rails[pr], linestyle="", marker="o")
 	plt.ylabel("mA")
 
-	
+
 plt.axvline(x=test_start_time, color="r", linestyle="dashed", label="Timeframe")
 plt.axvline(x=test_end_time	 , color="r", linestyle="dashed")
 

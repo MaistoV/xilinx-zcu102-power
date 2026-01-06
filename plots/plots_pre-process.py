@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import os
 import numpy as np
 import re
@@ -5,6 +6,8 @@ import matplotlib.pyplot as plt
 import glob
 import pandas
 import sys
+
+plt.rcParams.update({'font.size': 20})
 
 # Input data directory
 data_dir = "../data/raw/"
@@ -14,8 +17,8 @@ calibration_dir = "../data/calibration/"
 figures_dir = "./figures/pre-process/"
 out_dir = "../data/pre-processed/"
 
-teacher="ResNet-50"
-# teacher="DenseNet-201" 
+# teacher="ResNet-50"
+teacher="DenseNet-201"
 
 if len(sys.argv) >= 2:
 	teacher = sys.argv[1]
@@ -69,8 +72,8 @@ suffix_voltages = ".raw_voltages"
 
 print(wildcard_path + "*" + suffix_voltages)
 print(wildcard_path + "*" + suffix_currents)
-net_paths_raw_voltages = glob.glob(wildcard_path + "*" + suffix_voltages) 
-net_paths_raw_currents = glob.glob(wildcard_path + "*" + suffix_currents) 
+net_paths_raw_voltages = glob.glob(wildcard_path + "*" + suffix_voltages)
+net_paths_raw_currents = glob.glob(wildcard_path + "*" + suffix_currents)
 net_paths_raw_voltages.sort()
 net_paths_raw_currents.sort()
 # Sort net paths from shallower to deeper student, then teacher
@@ -118,7 +121,7 @@ for net in range(0,len(net_paths)):
 ###################
 # Timestamps data #
 ###################
- 
+
 time_nets = [0. for _ in range(len(net_paths))]
 for net in range(0,len(net_paths)):
 	# print(net_paths[net] + ".time")
@@ -144,7 +147,7 @@ filename = out_dir + dataset + "_" + base_nets_lower + "_" + "runtime.csv"
 print("Writing to", filename)
 
 # Open file
-file1 = open(filename, "w") 
+file1 = open(filename, "w")
 
 # Header
 file1.write("Network,Runtime(s)\n")
@@ -176,7 +179,7 @@ for net in range(0,len(net_names_raw)):
 # Power plot #
 ##############
 
-# plt.figure("Power", figsize=[15,10])
+# plt.figure("Power", figsize=[15,7])
 # ax = plt.subplot(2,4,1) # Assuming 8
 # for net in range(0,len(net_paths)):
 # 	ax = plt.subplot(2, 4, net+1, sharey=ax) # Assuming 8
@@ -190,7 +193,7 @@ for net in range(0,len(net_names_raw)):
 # 	plt.plot(power_nets[net]["Timestamp"], power_nets[net]["PL mW"	], label="PL"	)
 # 	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["MGT mW"	], label="MGT"	)
 # 	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["Total mW"	], label="Total"	)
-	
+
 # 	# Plot timeframe boundary
 # 	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
 # 	plt.axvline(x=time_nets[net]["End(sec)"  ].to_numpy(), linestyle="--")
@@ -210,11 +213,13 @@ for net in range(0,len(net_names_raw)):
 
 # Compute integral in the target time frame
 TIME_BIN_s = 0.024 # 24000 us
-# plt.figure("Energy from power", figsize=[15,10])
 pl_energy_mJ = [0. for net in range(len(power_nets))]
 ps_energy_mJ = [0. for net in range(len(power_nets))]
+pl_avg_power_mW = [0. for net in range(len(power_nets))]
+ps_avg_power_mW = [0. for net in range(len(power_nets))]
 # Loop over nets
 for net in range(0,len(power_nets)):
+	cnt = 0
 	# Loop over samples
 	for sample in range(0,len(power_nets[net])):
 		# If this sample is in the timeframe
@@ -222,12 +227,35 @@ for net in range(0,len(power_nets)):
 			power_nets[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
 			and power_nets[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
 			):
+			# Count up
+			cnt += 1
 			# Accumulate power
-			pl_energy_mJ[net] += power_nets[net]["PL mW"][sample]
-			ps_energy_mJ[net] += power_nets[net]["PS mW"][sample]
+			pl_avg_power_mW[net] += power_nets[net]["PL mW"][sample]
+			ps_avg_power_mW[net] += power_nets[net]["PS mW"][sample]
 	# Multiply with time bin (constant across samples)
-	pl_energy_mJ[net] *= TIME_BIN_s
-	ps_energy_mJ[net] *= TIME_BIN_s
+	pl_energy_mJ[net] = pl_avg_power_mW[net] * TIME_BIN_s
+	ps_energy_mJ[net] = ps_avg_power_mW[net] * TIME_BIN_s
+	# Compute average by dividing by number of samples
+	pl_avg_power_mW[net] /= cnt
+	ps_avg_power_mW[net] /= cnt
+	print(net_names[net], "Number of samples:", cnt)
+
+# Plot powers
+total_power = [ (pl_avg_power_mW[i] + ps_avg_power_mW[i]) for i in range(0,len(power_nets))]
+# total_power = [ ((pl_avg_power_mW[i] + ps_avg_power_mW[i]) / num_layers[i]) for i in range(0,len(power_nets))]
+
+
+plt.figure("Power", figsize=[15,7])
+# print(num_layers)
+# plt.plot(num_layers, pl_avg_power_mW, label="PL", marker="o", linewidth=3, markersize=12 )
+# plt.plot(num_layers, ps_avg_power_mW, label="PS", marker="d", linewidth=3, markersize=12 )
+plt.plot(num_layers, total_power, label="Sum", marker="d", linewidth=3, markersize=12 )
+plt.xticks(ticks=num_layers)
+plt.legend()
+plt.xlabel("Number of layers")
+plt.ylabel("mW")
+plt.grid()
+plt.savefig(figures_dir + dataset + "_" + base_nets + "_Power.png", bbox_inches="tight", dpi=400)
 
 # Dataframe per franca
 header = ["Network", "Energy (mJ)"]
@@ -244,19 +272,40 @@ df.to_csv(filename, index=False)
 # # NUM_FRAMES=1000
 # # J / frame
 # # print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
+plt.figure("Energy from power", figsize=[15,7])
+
+# Select P_Watts
+if teacher == "ResNet-50":
+	if dataset == "cifar10":
+		P_Watts = 24.77 # ResNet / cifar10
+	if dataset == "cifar100":
+		P_Watts = 34.76 # ResNet / cifar100
+if teacher == "DenseNet-201":
+	if dataset == "cifar10":
+		P_Watts = 25.90 # ResNet / cifar10
+	if dataset == "cifar100":
+		P_Watts = 32.35 # ResNet / cifar10
+
+P_heuristic = [(P_Watts * 1e3 / runtime_net[l]) for l in range(0,len(num_layers))]
+E_heuristic = [((pl_energy_mJ[l] + ps_energy_mJ[l]) / num_layers[l]) for l in range(0,len(num_layers))]
+print("E_heuristic: ", E_heuristic)
+
+print(runtime_net)
 
 # print(num_layers)
-plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
-plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
-plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
-plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
+plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o", linewidth=3, markersize=12 )
+plt.plot(num_layers, ps_energy_mJ, label="PS", marker="d", linewidth=3, markersize=12 )
+plt.plot(num_layers, E_heuristic, "--", label="Heuristic",  linewidth=3, markersize=12 )
+# plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
+# plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
 plt.xticks(ticks=num_layers)
-plt.legend(fontsize=15)
+plt.legend()
 plt.xlabel("Number of layers")
 plt.ylabel("mJ")
-plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from power.png", bbox_inches="tight")
+plt.grid()
+plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from power.png", bbox_inches="tight", dpi=400)
 
-# plt.figure("Relative energy efficiency", figsize=[15,10])
+# plt.figure("Relative energy efficiency", figsize=[15,7])
 # tot_energy_mJ = [0. for net in range(len(power_nets))]
 # relative_energy = [0. for net in range(len(power_nets))]
 # for net in reversed(range(0,len(tot_energy_mJ))):
@@ -278,8 +327,8 @@ power_rails = [
 		# # Cortex-As (PS)
 		"VCCPSINTFP",	# Dominant
 		# "VCCPSINTLP",
-		# "VCCPSAUX",	
-		# "VCCPSPLL",	
+		# "VCCPSAUX",
+		# "VCCPSPLL",
 		"VCCPSDDR",		# Dominant
 		# "VCCOPS",		# Don't use
 		# "VCCOPS3",	# Don't use
@@ -303,13 +352,16 @@ power_rails_names = [ "PS", "DDR", "PL"]
 #####################
 # Raw measures plot #
 #####################
-plt.figure("Power from raw data", figsize=[15,10])
+plt.figure("Power from raw data", figsize=[15,7])
 RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
 ax = plt.subplot(2,2,1) # Assuming 8
+# Remove tick marks
+ax.tick_params(axis='x', which='both', bottom=False, top=False)
+ax.set_xticks([])  # removes x-axis tick labels
 # Skip teacher
-for net in range(0,4):	
+for net in range(0,4):
 	ax = plt.subplot(2, 2, net+1, sharey=ax) # Assuming 8
-	
+
 	# loop over power rails
 	cnt = 0
 	for pr in power_rails:
@@ -324,11 +376,12 @@ for net in range(0,4):
 	# Decorate
 	if ( net == 1 ):
 		plt.legend(fontsize=15)
-	plt.title(net_names[net])
-	plt.xlabel("Time")
+	plt.title(net_names[net][3:], fontsize=15)
+	plt.xlabel("Time", fontsize=15)
 	# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
 	plt.xticks([])
-	plt.ylabel("Power(mW)")
+	plt.grid(axis="both")
+	plt.ylabel("Power(mW)", fontsize=15)
 
 figname = figures_dir + dataset + "_" + base_nets + "_raw.png"
 print(figname)
@@ -337,7 +390,7 @@ plt.savefig(figname, bbox_inches="tight")
 ##########################
 # Print a single measure #
 ##########################
-plt.figure("Single", figsize=[15,10])
+plt.figure("Single", figsize=[15,7])
 
 # loop over power rails
 cnt = 0
@@ -353,20 +406,21 @@ plt.axvline(x=time_nets[-1]["End(sec)"  ].to_numpy(), linestyle="--")
 
 # Decorate
 plt.legend(fontsize=15)
-plt.xlabel("Time")
+plt.xlabel("Time", fontsize=15)
+plt.grid(axis="both")
 # plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
 plt.xticks([])
-plt.ylabel("Power(mW)")
+plt.ylabel("Power(mW)", fontsize=15)
 
 figname = figures_dir + "power_rails.png"
 print(figname)
 plt.savefig(figname, bbox_inches="tight")
 
 # Compute integral in the target time frame
-# plt.figure("Energy from raw", figsize=[15,10])
+# plt.figure("Energy from raw", figsize=[15,7])
 # energy_mJ = [[0. for _ in range(len(power_rails))] for _ in range(len(power_nets))]
 # # Loop over nets
-# for net in range(0,len(net_names_raw)):	
+# for net in range(0,len(net_names_raw)):
 # 	# Loop over samples
 # 	for sample in range(0,len(raw_nets_currents[net])):
 # 		# If this sample is within the timeframe
@@ -384,12 +438,12 @@ plt.savefig(figname, bbox_inches="tight")
 # # ax=plt.subplot(2,4,1)
 # WIDTH=0.2
 # colors=["orange","green","blue"]
-# for net in range(0,len(net_names_raw)):	
+# for net in range(0,len(net_names_raw)):
 # 	for pr in range(0, len(power_rails)):
 # 		# ax=plt.subplot(2,4,net+1, sharey=ax)
 # 		plt.bar(net-WIDTH+(pr*WIDTH), # Assuming 3 prs
 # 			energy_mJ[net][pr],
-# 			width=WIDTH, 
+# 			width=WIDTH,
 # 			color=colors[pr]
 # 			)
 # for col in range(0,len(colors)):
@@ -400,7 +454,7 @@ plt.savefig(figname, bbox_inches="tight")
 # plt.xticks( ticks=range(0, len(net_names_raw)),
 # 			labels=num_layers
 # 			)
-			
+
 # plt.ylabel("mJ")
 # plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from raw.png", bbox_inches="tight")
 
