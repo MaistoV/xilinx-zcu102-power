@@ -112,7 +112,7 @@ void populate_ina226_array(ina226_t *ina226_list, size_t* ina226_list_size) {
 		//printf("name: %s\n", fname_buff);
 
 		fptr = fopen(fname_buff, "r");
-		fread(&buffer, 10, 1, fptr);
+		size_t fread_ret = fread(&buffer, 10, 1, fptr);
 		//printf("device type: %s", buffer);
 
 		if (strncmp(buffer, "ina226", 3) == 0) {
@@ -174,7 +174,7 @@ void list_ina226_list (ina226_t *ina226_list, size_t ina226_list_size) {
 		"PL  = VCCINT + VCCBRAM + VCCAUX + VCC1V2VCC3V3\n"
 		"MGT = MGTRAVCC + MGTRAVTT + MGTAVCC + MGTAVTT\n"
 		"Total Power = PS + PL + MGT\n"
-	); 
+	);
 
 	return;
 }

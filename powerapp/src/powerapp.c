@@ -1,16 +1,16 @@
 /**
  * @brief powerapp demo
- * 
+ *
  * Copyright:
  * 	Author(s) of https://github.com/jparkerh/xilinx-linux-power-utility/
  * 	Author(s) of https://www.xilinx.com/developer/articles/accurate-design-power-measurement.html
  *  Vincenzo Maisto <vincenzo.maisto2@unina.it>
- * 
+ *
  */
 
 #include "powerapp.h"
 
-int run_bm ( 
+int run_bm (
 				char power_filename[50],
 				unsigned long sampling_period_us,
 				unsigned int raw,
@@ -103,7 +103,7 @@ int run_bm (
 		for ( unsigned int i = 0; i < ina226_list_size; i++) {
 			// Read voltage
 			ina226_fd = fopen(ina226_list[i].voltage_path, "r");
-			fscanf(ina226_fd,"%[^\n]", buffer);
+			int fscanf_ret = fscanf(ina226_fd,"%[^\n]", buffer);
 			fclose(ina226_fd);
 
 			ina226_list[i].voltage = atoi(buffer);
@@ -117,7 +117,7 @@ int run_bm (
 
 			// Read current
 			ina226_fd = fopen(ina226_list[i].current_path, "r");
-			fscanf(ina226_fd,"%[^\n]", buffer);
+			fscanf_ret = fscanf(ina226_fd,"%[^\n]", buffer);
 			fclose(ina226_fd);
 
 			ina226_list[i].current = atoi(buffer);
@@ -160,19 +160,19 @@ int run_bm (
 						( ina226_list[MGTRAVTT].voltage	*	ina226_list[MGTRAVTT].current	) +
 						( ina226_list[MGTAVCC].voltage	*	ina226_list[MGTAVCC].current	) +
 						( ina226_list[MGTAVTT].voltage	*	ina226_list[MGTAVTT].current	) +
-						( ina226_list[VCC3V3].voltage	*	ina226_list[VCC3V3].current		)  
+						( ina226_list[VCC3V3].voltage	*	ina226_list[VCC3V3].current		)
 					) / 1000.0;
 
 			total_power_mW = mgt_power_mW + pl_power_mW + ps_power_mW;
 
 			// Print on file
 			fprintf(power_fd, "%u;%llu.%.9lu;%.6f;%.6f;%.6f;%.6f\n",
-						j, 
-						(unsigned long long)start_measure.tv_sec, 
+						j,
+						(unsigned long long)start_measure.tv_sec,
 						start_measure.tv_nsec,
-						ps_power_mW, 
-						pl_power_mW, 
-						mgt_power_mW, 
+						ps_power_mW,
+						pl_power_mW,
+						mgt_power_mW,
 						total_power_mW);
 		}
 
@@ -235,7 +235,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 	unsigned int power = DEFAULT_POWER;
 	unsigned int samples = DEFAULT_SAMPLES;
 	unsigned int continuous = DEFAULT_CONTINUOUS;
-	char power_filename[50] = DEFAULT_OUTFILE;
+	char power_filename[100] = DEFAULT_OUTFILE;
 
 	while ((opt = getopt(argc, argv, "r:p:t:o:n:lc:h")) != -1) {
 		switch (opt) {
@@ -271,7 +271,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 	}
 
 	int ret_val = 0;
-	ret_val = run_bm ( power_filename, 
+	ret_val = run_bm ( power_filename,
 						sampling_period_us,
 						raw,
 						power,
@@ -279,7 +279,7 @@ unsigned int main(unsigned int argc, char *argv[]) {
 						continuous,
 						ina226_list,
 						ina226_list_size
-					);		
+					);
 
 	return ret_val;
 }
