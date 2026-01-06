@@ -7,6 +7,7 @@ DATASET=cifar100
 
 XMODEL="xmodels/arch4096_unet_cityscapes64.xmodel"
 echo "Running $XMODEL"
+export XMODEL_BASENAME=$(basename $XMODEL)
 
 time \
 DEBUG_RUN=1 \
