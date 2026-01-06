@@ -183,10 +183,6 @@ int main(int argc, char *argv[]) {
 
   /* Flag for uprobes */
   // flag_function_1();
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 	struct timespec end_measure;
 	struct timespec start_measure;
   FILE* fd;
